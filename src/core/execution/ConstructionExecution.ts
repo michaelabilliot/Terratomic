@@ -9,6 +9,7 @@ import {
   UnitType,
 } from "../game/Game";
 import { TileRef } from "../game/GameMap";
+import { AcademyExecution } from "./AcademyExecution";
 import { CityExecution } from "./CityExecution";
 import { DefensePostExecution } from "./DefensePostExecution";
 import { HospitalExecution } from "./HospitalExecution";
@@ -126,6 +127,9 @@ export class ConstructionExecution implements Execution {
         break;
       case UnitType.Hospital:
         this.mg.addExecution(new HospitalExecution(player.id(), this.tile));
+        break;
+      case UnitType.Academy:
+        this.mg.addExecution(new AcademyExecution(player.id(), this.tile));
         break;
       default:
         throw Error(`unit type ${this.constructionType} not supported`);

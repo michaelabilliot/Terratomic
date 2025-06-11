@@ -19,6 +19,7 @@ const unitOptions: { type: UnitType; translationKey: string }[] = [
   { type: UnitType.HydrogenBomb, translationKey: "unit_type.hydrogen_bomb" },
   { type: UnitType.MIRV, translationKey: "unit_type.mirv" },
   { type: UnitType.Hospital, translationKey: "unit_type.hospital" },
+  { type: UnitType.Academy, translationKey: "unit_type.academy" },
 ];
 
 export function renderUnitTypeOptions({

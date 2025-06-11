@@ -6,6 +6,7 @@ import { TransformHandler } from "../TransformHandler";
 import { Layer } from "./Layer";
 import { UnitInfoModal } from "./UnitInfoModal";
 
+import academyIcon from "../../../../resources/images/buildings/academy_icon.png";
 import cityIcon from "../../../../resources/images/buildings/cityAlt1.png";
 import shieldIcon from "../../../../resources/images/buildings/fortAlt2.png";
 import hospitalIcon from "../../../../resources/images/buildings/hospital.png";
@@ -86,6 +87,12 @@ export class StructureLayer implements Layer {
     },
     [UnitType.Hospital]: {
       icon: hospitalIcon,
+      borderRadius: 8.525,
+      territoryRadius: 6.525,
+      borderType: UnitBorderType.Square,
+    },
+    [UnitType.Academy]: {
+      icon: academyIcon,
       borderRadius: 8.525,
       territoryRadius: 6.525,
       borderType: UnitBorderType.Square,

@@ -226,7 +226,8 @@
     "atom_bomb": "Atom Bomb",
     "hydrogen_bomb": "Hydrogen Bomb",
     "mirv": "MIRV",
-    "hospital": "Hospital"
+    "hospital": "Hospital",
+    "academy": "Military Academy"
   },
   "user_setting": {
     "title": "User Settings",
@@ -361,7 +362,8 @@
       "port": "Sends trade ships to generate gold",
       "defense_post": "Increase defenses of nearby borders",
       "city": "Increase max population",
-      "hospital": "Lowers troop casualties from combat"
+      "hospital": "Lowers troop casualties from combat",
+      "academy": "Increases troop speed and enemy losses in combat"
     },
     "not_enough_money": "Not enough money"
   },

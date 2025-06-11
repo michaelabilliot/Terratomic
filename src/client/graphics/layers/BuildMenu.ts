@@ -1,6 +1,7 @@
 import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import warshipIcon from "../../../../resources/images/BattleshipIconWhite.svg";
+import academyIcon from "../../../../resources/images/buildings/academy_icon.png";
 import cityIcon from "../../../../resources/images/CityIconWhite.svg";
 import goldCoinIcon from "../../../../resources/images/GoldCoinIcon.svg";
 import hospitalIcon from "../../../../resources/images/HospitalIconWhite.svg";
@@ -88,17 +89,24 @@ const buildTable: BuildItemDisplay[][] = [
       countable: true,
     },
     {
-      unitType: UnitType.City,
-      icon: cityIcon,
-      description: "build_menu.desc.city",
-      key: "unit_type.city",
-      countable: true,
-    },
-    {
       unitType: UnitType.Hospital,
       icon: hospitalIcon,
       description: "build_menu.desc.hospital",
       key: "unit_type.hospital",
+      countable: true,
+    },
+    {
+      unitType: UnitType.Academy,
+      icon: academyIcon,
+      description: "build_menu.desc.academy",
+      key: "unit_type.academy",
+      countable: true,
+    },
+    {
+      unitType: UnitType.City,
+      icon: cityIcon,
+      description: "build_menu.desc.city",
+      key: "unit_type.city",
       countable: true,
     },
   ],

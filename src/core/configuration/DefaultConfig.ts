@@ -452,6 +452,23 @@ export class DefaultConfig implements Config {
           territoryBound: true,
           constructionDuration: this.instantBuild() ? 0 : 2 * 10,
         };
+      case UnitType.Academy:
+        return {
+          cost: (p: Player) =>
+            p.type() === PlayerType.Human && this.infiniteGold()
+              ? 0n
+              : BigInt(
+                  Math.min(
+                    3_000_000,
+                    Math.pow(
+                      2,
+                      p.unitsIncludingConstruction(UnitType.Academy).length,
+                    ) * 1_500_000,
+                  ),
+                ),
+          territoryBound: true,
+          constructionDuration: this.instantBuild() ? 0 : 2 * 10,
+        };
       default:
         assertNever(type);
     }
@@ -571,16 +588,21 @@ export class DefaultConfig implements Config {
         : 1;
       const baseTroopLoss = 10;
       const attackLossModifier = 1.35;
+      const academyAttackModifier =
+        1.2 - 0.2 * 0.5 ** defender.units(UnitType.Academy).length;
+      const academyDefenseModifier =
+        1.2 - 0.2 * 0.5 ** attacker.units(UnitType.Academy).length;
       const baseTileCost = 45;
       const attackStandardSize = 10_000;
       return {
         attackerTroopLoss:
           mag *
+          academyAttackModifier *
           (baseTroopLoss +
             attackLossModifier * defenderDensity * traitorDebuff),
-        defenderTroopLoss: defenderDensity,
+        defenderTroopLoss: defenderDensity * academyDefenseModifier,
         tilesPerTickUsed:
-          baseTileCost *
+          (baseTileCost / academyDefenseModifier) *
           within(defenderDensity, 3, 50) ** 0.2 *
           (attackStandardSize / attackTroops) ** 0.225 *
           speed *
