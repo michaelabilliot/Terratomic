@@ -361,7 +361,7 @@ export const ServerDesyncSchema = ServerBaseMessageSchema.extend({
   yourHash: z.number().optional(),
 });
 
-export const ServerMessageSchema = z.union([
+export const ServerMessageSchema = z.discriminatedUnion("type", [
   ServerTurnMessageSchema,
   ServerPrestartMessageSchema,
   ServerStartGameMessageSchema,
@@ -417,7 +417,7 @@ export const ClientJoinMessageSchema = z.object({
   flag: SafeString.optional(),
 });
 
-export const ClientMessageSchema = z.union([
+export const ClientMessageSchema = z.discriminatedUnion("type", [
   ClientSendWinnerSchema,
   ClientPingMessageSchema,
   ClientIntentMessageSchema,
