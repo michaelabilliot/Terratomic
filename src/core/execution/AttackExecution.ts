@@ -184,7 +184,7 @@ export class AttackExecution implements Execution {
     if (deaths) {
       this.mg.displayMessage(
         `Attack cancelled, ${renderTroops(deaths)} soldiers killed during retreat.`,
-        MessageType.SUCCESS,
+        MessageType.ATTACK_CANCELLED,
         this._owner.id(),
       );
     }
@@ -358,8 +358,9 @@ export class AttackExecution implements Execution {
       `Conquered ${this.target.displayName()} received ${renderNumber(
         gold,
       )} gold`,
-      MessageType.SUCCESS,
+      MessageType.CONQUERED_PLAYER,
       this._owner.id(),
+      gold,
     );
     this.target.removeGold(gold);
     this._owner.addGold(gold);
