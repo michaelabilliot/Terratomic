@@ -16,6 +16,8 @@ const playlist = new MapPlaylist();
 const readyWorkers = new Set();
 
 const app = express();
+app.set("trust proxy", true);
+
 const server = http.createServer(app);
 
 const log = logger.child({ comp: "m" });

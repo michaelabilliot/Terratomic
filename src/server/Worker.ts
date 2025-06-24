@@ -36,6 +36,8 @@ export function startWorker() {
   const __dirname = path.dirname(__filename);
 
   const app = express();
+  app.set("trust proxy", true);
+
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server });
 
@@ -294,72 +296,78 @@ export function startWorker() {
 
         try {
           // Parse and handle client messages
-          const parsed = ClientJoinMessageSchema.safeParse(
-            JSON.parse(message.toString()),
-          );
-          if (!parsed.success) {
-            const error = z.prettifyError(parsed.error);
-            log.warn("Error parsing join message client", error);
-            ws.close();
-            return;
-          }
-          const clientMsg = parsed.data;
+          log.warn(`Raw WebSocket message: ${message.toString()}`);
+          const raw = JSON.parse(message.toString());
 
-          if (clientMsg.type === "join") {
-            // Verify this worker should handle this game
-            const expectedWorkerId = config.workerIndex(clientMsg.gameID);
-            if (expectedWorkerId !== workerId) {
-              log.warn(
-                `Worker mismatch: Game ${clientMsg.gameID} should be on worker ${expectedWorkerId}, but this is worker ${workerId}`,
-              );
+          if (raw?.type === "join") {
+            const parsed = ClientJoinMessageSchema.safeParse(
+              JSON.parse(message.toString()),
+            );
+            if (!parsed.success) {
+              log.warn("ClientJoinMessage parsing failed:");
+              for (const issue of parsed.error.errors) {
+                log.warn(` → [${issue.path.join(".")}] ${issue.message}`);
+              }
+              ws.close();
               return;
             }
+            const clientMsg = parsed.data;
 
-            const { persistentId, claims } = await verifyClientToken(
-              clientMsg.token,
-              config,
-            );
-
-            let roles: string[] | undefined;
-
-            // Check user roles
-            if (claims !== null) {
-              const result = await getUserMe(clientMsg.token, config);
-              if (result === false) {
-                log.warn("Token is not valid", claims);
+            if (clientMsg.type === "join") {
+              // Verify this worker should handle this game
+              const expectedWorkerId = config.workerIndex(clientMsg.gameID);
+              if (expectedWorkerId !== workerId) {
+                log.warn(
+                  `Worker mismatch: Game ${clientMsg.gameID} should be on worker ${expectedWorkerId}, but this is worker ${workerId}`,
+                );
                 return;
               }
-              roles = result.player.roles;
-            }
 
-            // TODO: Validate client settings based on roles
-
-            // Create client and add to game
-            const client = new Client(
-              clientMsg.clientID,
-              persistentId,
-              claims,
-              roles,
-              ip,
-              clientMsg.username,
-              ws,
-              clientMsg.flag,
-            );
-
-            const wasFound = gm.addClient(
-              client,
-              clientMsg.gameID,
-              clientMsg.lastTurn,
-            );
-
-            if (!wasFound) {
-              log.info(
-                `game ${clientMsg.gameID} not found on worker ${workerId}`,
+              const { persistentId, claims } = await verifyClientToken(
+                clientMsg.token,
+                config,
               );
-              // Handle game not found case
+
+              let roles: string[] | undefined;
+
+              // Check user roles
+              if (claims !== null) {
+                const result = await getUserMe(clientMsg.token, config);
+                if (result === false) {
+                  log.warn("Token is not valid", claims);
+                  return;
+                }
+                roles = result.player.roles;
+              }
+
+              // TODO: Validate client settings based on roles
+
+              // Create client and add to game
+              const client = new Client(
+                clientMsg.clientID,
+                persistentId,
+                claims,
+                roles,
+                ip,
+                clientMsg.username,
+                ws,
+                clientMsg.flag,
+              );
+
+              const wasFound = gm.addClient(
+                client,
+                clientMsg.gameID,
+                clientMsg.lastTurn,
+              );
+
+              if (!wasFound) {
+                log.info(
+                  `game ${clientMsg.gameID} not found on worker ${workerId}`,
+                );
+                // Handle game not found case
+              }
             }
           }
-
           // Handle other message types
         } catch (error) {
           log.warn(
