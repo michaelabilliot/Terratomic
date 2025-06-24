@@ -295,6 +295,9 @@ export class PlayerView {
   hospitalReturns(): number {
     return this.data.hospitalReturns ?? 0;
   }
+  isDisconnected(): boolean {
+    return this.data.isDisconnected;
+  }
 }
 
 export class GameView implements GameMap {
