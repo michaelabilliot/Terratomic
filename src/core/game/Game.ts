@@ -152,6 +152,19 @@ export enum UnitType {
   Academy = "Academy",
 }
 
+const _structureTypes: ReadonlySet<UnitType> = new Set([
+  UnitType.City,
+  UnitType.Construction,
+  UnitType.DefensePost,
+  UnitType.SAMLauncher,
+  UnitType.MissileSilo,
+  UnitType.Port,
+]);
+
+export function isStructureType(type: UnitType): boolean {
+  return _structureTypes.has(type);
+}
+
 export interface OwnerComp {
   owner: Player;
 }
