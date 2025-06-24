@@ -1,32 +1,18 @@
-import {
-  Execution,
-  Game,
-  Player,
-  PlayerID,
-  Unit,
-  UnitType,
-} from "../game/Game";
+import { Execution, Game, Player, Unit, UnitType } from "../game/Game";
 import { TileRef } from "../game/GameMap";
 
 export class HospitalExecution implements Execution {
-  private player: Player;
   private mg: Game;
   private hospital: Unit | null = null;
   private active: boolean = true;
 
   constructor(
-    private ownerId: PlayerID,
+    private player: Player,
     private tile: TileRef,
   ) {}
 
   init(mg: Game, ticks: number): void {
     this.mg = mg;
-    if (!mg.hasPlayer(this.ownerId)) {
-      console.warn(`HospitalExecution: player ${this.ownerId} not found`);
-      this.active = false;
-      return;
-    }
-    this.player = mg.player(this.ownerId);
   }
 
   tick(ticks: number): void {
