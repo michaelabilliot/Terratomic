@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import quickChatData from "../../resources/QuickChat.json" with { type: "json" };
 import {
   AllPlayers,
@@ -72,14 +72,14 @@ export type ClientMessage =
   | ClientLogMessage
   | ClientHashMessage;
 export type ServerMessage =
-  | ServerSyncMessage
+  | ServerTurnMessage
   | ServerStartGameMessage
   | ServerPingMessage
   | ServerDesyncMessage
   | ServerPrestartMessage
   | ServerErrorMessage;
 
-export type ServerSyncMessage = z.infer<typeof ServerTurnMessageSchema>;
+export type ServerTurnMessage = z.infer<typeof ServerTurnMessageSchema>;
 export type ServerStartGameMessage = z.infer<
   typeof ServerStartGameMessageSchema
 >;
@@ -97,7 +97,7 @@ export type ClientHashMessage = z.infer<typeof ClientHashSchema>;
 export type AllPlayersStats = z.infer<typeof AllPlayersStatsSchema>;
 export type Player = z.infer<typeof PlayerSchema>;
 export type GameStartInfo = z.infer<typeof GameStartInfoSchema>;
-const PlayerTypeSchema = z.nativeEnum(PlayerType);
+const PlayerTypeSchema = z.enum(PlayerType);
 
 export interface GameInfo {
   gameID: GameID;
@@ -123,18 +123,18 @@ export enum LogSeverity {
 //
 
 export const GameConfigSchema = z.object({
-  gameMap: z.nativeEnum(GameMapType),
-  difficulty: z.nativeEnum(Difficulty),
-  gameType: z.nativeEnum(GameType),
-  gameMode: z.nativeEnum(GameMode),
+  gameMap: z.enum(GameMapType),
+  difficulty: z.enum(Difficulty),
+  gameType: z.enum(GameType),
+  gameMode: z.enum(GameMode),
   disableNPCs: z.boolean(),
   bots: z.number().int().min(0).max(400),
   infiniteGold: z.boolean(),
   infiniteTroops: z.boolean(),
   instantBuild: z.boolean(),
   maxPlayers: z.number().optional(),
-  disabledUnits: z.nativeEnum(UnitType).array().optional(),
-  playerTeams: z.union([z.number().optional(), z.literal(Duos)]),
+  disabledUnits: z.enum(UnitType).array().optional(),
+  playerTeams: z.union([z.number(), z.literal(Duos)]).optional(),
 });
 
 export const TeamSchema = z.string();
@@ -146,8 +146,8 @@ const SafeString = z
   )
   .max(1000);
 
-export const PersistentIdSchema = z.string().uuid();
-const JwtTokenSchema = z.string().jwt();
+export const PersistentIdSchema = z.uuid();
+const JwtTokenSchema = z.jwt();
 const TokenSchema = z
   .string()
   .refine(
@@ -264,7 +264,7 @@ export const TargetTroopRatioIntentSchema = BaseIntentSchema.extend({
 
 export const BuildUnitIntentSchema = BaseIntentSchema.extend({
   type: z.literal("build_unit"),
-  unit: z.nativeEnum(UnitType),
+  unit: z.enum(UnitType),
   x: z.number(),
   y: z.number(),
 });
@@ -289,7 +289,7 @@ export const QuickChatIntentSchema = BaseIntentSchema.extend({
   type: z.literal("quick_chat"),
   recipient: ID,
   quickChatKey: QuickChatKeySchema,
-  variables: z.record(SafeString).optional(),
+  variables: z.record(z.string(), SafeString).optional(),
 });
 
 export const MarkDisconnectedIntentSchema = BaseIntentSchema.extend({
@@ -415,7 +415,7 @@ export const ClientHashSchema = z.object({
 
 export const ClientLogMessageSchema = z.object({
   type: z.literal("log"),
-  severity: z.nativeEnum(LogSeverity),
+  severity: z.enum(LogSeverity),
   log: ID,
 });
 
