@@ -27,6 +27,7 @@ import { UserSettings } from "../core/game/UserSettings";
 import { WorkerClient } from "../core/worker/WorkerClient";
 import {
   DoBoatAttackEvent,
+  DoGroundAttackEvent,
   InputHandler,
   MouseMoveEvent,
   MouseUpEvent,
@@ -245,9 +246,16 @@ export class ClientGameRunner {
         1000,
       );
     }, 20000);
-    this.eventBus.on(MouseUpEvent, (e) => this.inputEvent(e));
-    this.eventBus.on(MouseMoveEvent, (e) => this.onMouseMove(e));
-    this.eventBus.on(DoBoatAttackEvent, (e) => this.doBoatAttackUnderCursor());
+    this.eventBus.on(MouseUpEvent, this.inputEvent.bind(this));
+    this.eventBus.on(MouseMoveEvent, this.onMouseMove.bind(this));
+    this.eventBus.on(
+      DoBoatAttackEvent,
+      this.doBoatAttackUnderCursor.bind(this),
+    );
+    this.eventBus.on(
+      DoGroundAttackEvent,
+      this.doGroundAttackUnderCursor.bind(this),
+    );
 
     this.renderer.initialize();
     this.input.initialize();
@@ -417,22 +425,11 @@ export class ClientGameRunner {
   }
 
   private doBoatAttackUnderCursor(): void {
-    if (!this.isActive || !this.lastMousePosition) {
+    const tile = this.getTileUnderCursor();
+    if (tile === null) {
       return;
     }
-    const cell = this.renderer.transformHandler.screenToWorldCoordinates(
-      this.lastMousePosition.x,
-      this.lastMousePosition.y,
-    );
-    if (!this.gameView.isValidCoord(cell.x, cell.y)) {
-      return;
-    }
-
-    const tile = this.gameView.ref(cell.x, cell.y);
-    if (this.gameView.inSpawnPhase()) {
-      return;
-    }
-
+    const cell = new Cell(this.gameView.x(tile), this.gameView.y(tile));
     if (this.myPlayer === null) {
       const myPlayer = this.gameView.playerByClientID(this.lobby.clientID);
       if (myPlayer === null) return;
@@ -444,6 +441,48 @@ export class ClientGameRunner {
         this.sendBoatAttackIntent(tile, cell);
       }
     });
+  }
+
+  private doGroundAttackUnderCursor(): void {
+    const tile = this.getTileUnderCursor();
+    if (tile === null) {
+      return;
+    }
+
+    if (this.myPlayer === null) {
+      const myPlayer = this.gameView.playerByClientID(this.lobby.clientID);
+      if (myPlayer === null) return;
+      this.myPlayer = myPlayer;
+    }
+
+    this.myPlayer.actions(tile).then((actions) => {
+      if (this.myPlayer === null) return;
+      if (actions.canAttack) {
+        this.eventBus.emit(
+          new SendAttackIntentEvent(
+            this.gameView.owner(tile).id(),
+            this.myPlayer.troops() * this.renderer.uiState.attackRatio,
+          ),
+        );
+      }
+    });
+  }
+
+  private getTileUnderCursor(): TileRef | null {
+    if (!this.isActive || !this.lastMousePosition) {
+      return null;
+    }
+    if (this.gameView.inSpawnPhase()) {
+      return null;
+    }
+    const cell = this.renderer.transformHandler.screenToWorldCoordinates(
+      this.lastMousePosition.x,
+      this.lastMousePosition.y,
+    );
+    if (!this.gameView.isValidCoord(cell.x, cell.y)) {
+      return null;
+    }
+    return this.gameView.ref(cell.x, cell.y);
   }
 
   private canBoatAttack(actions: PlayerActions, tile: TileRef): boolean {
