@@ -99,13 +99,17 @@ export class PublicLobby extends LitElement {
       <button
         @click=${() => this.lobbyClicked(lobby)}
         ?disabled=${this.isButtonDebounced}
-        class="isolate grid h-40 grid-cols-[100%] grid-rows-[100%] place-content-stretch w-full overflow-hidden ${this
-          .isLobbyHighlighted
-          ? "bg-gradient-to-r from-green-600 to-green-500"
-          : "bg-gradient-to-r from-blue-600 to-blue-500"} text-white font-medium rounded-xl transition-opacity duration-200 hover:opacity-90 ${this
-          .isButtonDebounced
-          ? "opacity-70 cursor-not-allowed"
-          : ""}"
+        /* —— button element ——————————————— */
+        class="isolate grid h-40 grid-cols-[100%] grid-rows-[100%] place-content-stretch
+       w-full overflow-hidden
+       bg-gradient-to-r from-[var(--primaryColor)] to-[var(--primaryColorHover)]
+       text-white font-medium rounded-xl
+       transition-opacity duration-200 hover:opacity-90
+       ${this.isLobbyHighlighted ? "ring-4 ring-[#9f1239]" : ""}
+       ${this.isButtonDebounced ? "opacity-70 cursor-not-allowed" : ""}"
+
+
+
       >
         <img
           src="${getMapsImage(lobby.gameConfig.gameMap)}"
@@ -120,15 +124,23 @@ export class PublicLobby extends LitElement {
             <div class="text-lg md:text-2xl font-semibold">
               ${translateText("public_lobby.join")}
             </div>
-            <div class="text-md font-medium text-blue-100">
+            <div class="text-md font-medium text-[var(--secondaryColor)]">
               <span
-                class="text-sm ${this.isLobbyHighlighted
-                  ? "text-green-600"
-                  : "text-blue-600"} bg-white rounded-sm px-1"
+                class="text-sm
+                ${
+                  this.isLobbyHighlighted
+                    ? "text-[var(--alertColor)]"
+                    : "text-[var(--primaryColor)]"
+                }
+                bg-white rounded-sm px-1"
               >
-                ${lobby.gameConfig.gameMode === GameMode.Team
-                  ? translateText("public_lobby.teams", { num: teamCount ?? 0 })
-                  : translateText("game_mode.ffa")}</span
+                ${
+                  lobby.gameConfig.gameMode === GameMode.Team
+                    ? translateText("public_lobby.teams", {
+                        num: teamCount ?? 0,
+                      })
+                    : translateText("game_mode.ffa")
+                }</span
               >
               <span
                 >${translateText(

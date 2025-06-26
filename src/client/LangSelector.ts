@@ -268,7 +268,15 @@ export class LangSelector extends LitElement {
         <button
           id="lang-selector"
           @click=${this.openModal}
-          class="text-center appearance-none w-full bg-blue-100 hover:bg-blue-200 text-blue-900 p-3 sm:p-4 lg:p-5 font-medium text-sm sm:text-base lg:text-lg rounded-md border-none cursor-pointer transition-colors duration-300 flex items-center gap-2 justify-center"
+          class="
+          text-center appearance-none w-full
+          bg-[var(--secondaryColor)] hover:bg-[var(--secondaryColorHover)]
+          text-[var(--accentTextColor)]
+          p-3 sm:p-4 lg:p-5 font-medium text-sm sm:text-base lg:text-lg
+          rounded-md border-none cursor-pointer
+          transition-colors duration-300
+          flex items-center gap-2 justify-center
+          "
         >
           <img
             id="lang-flag"
