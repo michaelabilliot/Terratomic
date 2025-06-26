@@ -402,12 +402,15 @@ export class RadialMenu implements Layer {
           }
 
           if (this.clickedCell === null) return;
+
+          const dst = this.g.ref(this.clickedCell.x, this.clickedCell.y);
+          const src = spawnTile ? this.g.ref(spawnTile.x, spawnTile.y) : null;
           this.eventBus.emit(
             new SendBoatAttackIntentEvent(
               this.g.owner(tile).id(),
-              this.clickedCell,
+              dst,
               this.uiState.attackRatio * myPlayer.troops(),
-              spawnTile,
+              src,
             ),
           );
         });

@@ -1,5 +1,4 @@
 import { Execution, Game } from "../game/Game";
-import { TileRef } from "../game/GameMap";
 import { PseudoRandom } from "../PseudoRandom";
 import { ClientID, GameID, Intent, Turn } from "../Schemas";
 import { simpleHash } from "../Util";
@@ -71,14 +70,11 @@ export class Executor {
           this.mg.ref(intent.x, intent.y),
         );
       case "boat":
-        let src: TileRef | null = null;
-        if (intent.srcX !== null && intent.srcY !== null) {
-          src = this.mg.ref(intent.srcX, intent.srcY);
-        }
+        const src = intent.src ?? null;
         return new TransportShipExecution(
           player,
           intent.targetID,
-          this.mg.ref(intent.dstX, intent.dstY),
+          intent.dst,
           intent.troops,
           src,
         );
@@ -119,7 +115,7 @@ export class Executor {
           player,
           intent.recipient,
           intent.quickChatKey,
-          intent.variables ?? {},
+          intent.target,
         );
       case "mark_disconnected":
         return new MarkDisconnectedExecution(player, intent.isDisconnected);

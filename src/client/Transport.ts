@@ -10,6 +10,7 @@ import {
   Tick,
   UnitType,
 } from "../core/game/Game";
+import { TileRef } from "../core/game/GameMap";
 import { PlayerView } from "../core/game/GameView";
 import {
   AllPlayersStats,
@@ -46,6 +47,13 @@ export class SendBreakAllianceIntentEvent implements GameEvent {
   ) {}
 }
 
+export class SendUpgradeStructureIntentEvent implements GameEvent {
+  constructor(
+    public readonly unitId: number,
+    public readonly unitType: UnitType,
+  ) {}
+}
+
 export class SendAllianceReplyIntentEvent implements GameEvent {
   constructor(
     // The original alliance requestor
@@ -69,9 +77,9 @@ export class SendAttackIntentEvent implements GameEvent {
 export class SendBoatAttackIntentEvent implements GameEvent {
   constructor(
     public readonly targetID: PlayerID | null,
-    public readonly dst: Cell,
+    public readonly dst: TileRef,
     public readonly troops: number,
-    public readonly src: Cell | null = null,
+    public readonly src: TileRef | null = null,
   ) {}
 }
 
@@ -111,7 +119,7 @@ export class SendQuickChatEvent implements GameEvent {
   constructor(
     public readonly recipient: PlayerView,
     public readonly quickChatKey: string,
-    public readonly variables: { [key: string]: string },
+    public readonly target?: PlayerID,
   ) {}
 }
 
@@ -427,10 +435,8 @@ export class Transport {
       clientID: this.lobbyConfig.clientID,
       targetID: event.targetID,
       troops: event.troops,
-      dstX: event.dst.x,
-      dstY: event.dst.y,
-      srcX: event.src?.x ?? null,
-      srcY: event.src?.y ?? null,
+      dst: event.dst,
+      src: event.src,
     });
   }
 
@@ -476,7 +482,7 @@ export class Transport {
       clientID: this.lobbyConfig.clientID,
       recipient: event.recipient.id(),
       quickChatKey: event.quickChatKey,
-      variables: event.variables,
+      target: event.target,
     });
   }
 

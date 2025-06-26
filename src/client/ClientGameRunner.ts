@@ -12,7 +12,7 @@ import {
 import { createGameRecord } from "../core/Util";
 import { ServerConfig } from "../core/configuration/Config";
 import { getConfig } from "../core/configuration/ConfigLoader";
-import { Cell, PlayerActions, UnitType } from "../core/game/Game";
+import { PlayerActions, UnitType } from "../core/game/Game";
 import { TileRef } from "../core/game/GameMap";
 import {
   ErrorUpdate,
@@ -412,7 +412,7 @@ export class ClientGameRunner {
           ),
         );
       } else if (this.canBoatAttack(actions, tile)) {
-        this.sendBoatAttackIntent(tile, cell);
+        this.sendBoatAttackIntent(tile);
       }
 
       const owner = this.gameView.owner(tile);
@@ -429,7 +429,7 @@ export class ClientGameRunner {
     if (tile === null) {
       return;
     }
-    const cell = new Cell(this.gameView.x(tile), this.gameView.y(tile));
+
     if (this.myPlayer === null) {
       const myPlayer = this.gameView.playerByClientID(this.lobby.clientID);
       if (myPlayer === null) return;
@@ -437,8 +437,8 @@ export class ClientGameRunner {
     }
 
     this.myPlayer.actions(tile).then((actions) => {
-      if (!actions.canAttack && this.canBoatAttack(actions, tile)) {
-        this.sendBoatAttackIntent(tile, cell);
+      if (this.canBoatAttack(actions, tile)) {
+        this.sendBoatAttackIntent(tile);
       }
     });
   }
@@ -493,33 +493,23 @@ export class ClientGameRunner {
       console.warn(`no transport ship buildable units`);
       return false;
     }
-    return (
-      bu.canBuild !== false &&
-      this.shouldBoat(tile, bu.canBuild) &&
-      this.gameView.isLand(tile)
-    );
+    return bu.canBuild !== false && this.gameView.isLand(tile);
   }
 
-  private sendBoatAttackIntent(tile: TileRef, cell: Cell) {
+  private sendBoatAttackIntent(tile: TileRef) {
     if (!this.myPlayer) return;
 
-    this.myPlayer
-      .bestTransportShipSpawn(this.gameView.ref(cell.x, cell.y))
-      .then((spawn: number | false) => {
-        if (this.myPlayer === null) throw new Error("not initialized");
-        let spawnCell: Cell | null = null;
-        if (spawn !== false) {
-          spawnCell = new Cell(this.gameView.x(spawn), this.gameView.y(spawn));
-        }
-        this.eventBus.emit(
-          new SendBoatAttackIntentEvent(
-            this.gameView.owner(tile).id(),
-            cell,
-            this.myPlayer.troops() * this.renderer.uiState.attackRatio,
-            spawnCell,
-          ),
-        );
-      });
+    this.myPlayer.bestTransportShipSpawn(tile).then((spawn: number | false) => {
+      if (this.myPlayer === null) throw new Error("not initialized");
+      this.eventBus.emit(
+        new SendBoatAttackIntentEvent(
+          this.gameView.owner(tile).id(),
+          tile,
+          this.myPlayer.troops() * this.renderer.uiState.attackRatio,
+          spawn === false ? null : spawn,
+        ),
+      );
+    });
   }
 
   private shouldBoat(tile: TileRef, src: TileRef) {
