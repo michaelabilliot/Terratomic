@@ -238,6 +238,13 @@ export class PlayerInfoOverlay extends LitElement implements Layer {
           ${renderNumber(player.gold())}
         </div>
         <div class="text-sm opacity-80" translate="no">
+          ${translateText("player_info_overlay.productivity")}:
+          ${Math.round(player.productivity() * 100)}%
+          (${player.productivityGrowthPerMinute() >= 0 ? "+" : ""}${(
+            player.productivityGrowthPerMinute() * 100
+          ).toFixed(1)}%/min)
+        </div>
+        <div class="text-sm opacity-80" translate="no">
           ${translateText("player_info_overlay.ports")}:
           ${player.units(UnitType.Port).length}
         </div>

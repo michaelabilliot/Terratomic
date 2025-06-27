@@ -245,7 +245,15 @@ export class PlayerView {
   troops(): number {
     return this.data.troops;
   }
-
+  productivity(): number {
+    return this.data.productivity;
+  }
+  productivityGrowthPerMinute(): number {
+    return this.data.productivityGrowthPerMinute;
+  }
+  investmentRate(): number {
+    return this.data.investmentRate;
+  }
   isAlliedWith(other: PlayerView): boolean {
     return this.data.allies.some((n) => other.smallID() === n);
   }

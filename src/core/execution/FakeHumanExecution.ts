@@ -44,6 +44,7 @@ export class FakeHumanExecution implements Execution {
   private lastNukeSent: [Tick, TileRef][] = [];
   private embargoMalusApplied = new Set<PlayerID>();
   private heckleEmoji: number[];
+  private hasSetInvestmentRate = false;
 
   constructor(
     gameID: GameID,
@@ -159,6 +160,11 @@ export class FakeHumanExecution implements Execution {
       this.player.targetTroopRatio() > 0.7
     ) {
       this.player.setTargetTroopRatio(0.7);
+    }
+
+    if (!this.hasSetInvestmentRate) {
+      this.player.setInvestmentRate(0.1);
+      this.hasSetInvestmentRate = true;
     }
 
     this.updateRelationsFromEmbargos();

@@ -51,33 +51,26 @@ export class NewsModal extends LitElement {
             <div class="news-container">
               <div class="news-content">
                 <p>
-                  This test version introduces a new building:
-                  <strong>Hospitals</strong>. Each hospital restores some of
-                  your troop losses from both offensive and defensive combat.
-                  The restored troops are displayed next to your population
-                  growth count in your control panel.
+                  This test version introduces a new mechanic:
+                  <strong>Investment</strong>.
                 </p>
                 <p>
-                  The first hospital provides a
-                  <strong>10% reduction</strong> in combat casualties. Each
-                  additional hospital reduces losses by
-                  <strong>75% of the previous reduction</strong>.
+                  A new <strong>Investment Slider</strong> lets you dedicate a
+                  portion of your nation's gold to productivity growth. Gold
+                  spent on investment is subtracted before any other expenses.
                 </p>
-                <ul>
-                  <li>1st hospital: 10% reduction</li>
-                  <li>2nd hospital: 7.5% additional reduction</li>
-                  <li>3rd hospital: 5.6% additional reduction</li>
-                  <li>... and so on</li>
-                </ul>
-                <p>These effects stack cumulatively.</p>
                 <p>
-                  For a full list of changes, join the
-                  <a
-                    href="https://discord.com/channels/1379151032369676338/1379156389699649566"
-                    target="_blank"
-                  >
-                    Discord </a
-                  >.
+                  The more you invest, the faster your
+                  <strong>worker productivity</strong> increases—boosting your
+                  long-term gold income. Productivity grows gradually and
+                  compounds over time, meaning consistent investment can lead to
+                  a powerful economic advantage.
+                </p>
+                <p>
+                  Nuclear strikes now <strong>reduce productivity</strong>
+                  proportionally to the number of tiles you lose. This creates
+                  longer-term economic damage beyond just troop and worker
+                  losses.
                 </p>
               </div>
             </div>

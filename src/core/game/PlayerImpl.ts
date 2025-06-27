@@ -71,6 +71,10 @@ export class PlayerImpl implements Player {
 
   // 0 to 100
   private _targetTroopRatio: bigint;
+  private _investmentRate: number = 0.5;
+  private _productivity = 1;
+  private _productivityGrowthPerMinute = 0;
+  private _maxproductivity = 1;
 
   markedTraitorTick = -1;
 
@@ -148,6 +152,9 @@ export class PlayerImpl implements Player {
       workers: this.workers(),
       troops: this.troops(),
       targetTroopRatio: this.targetTroopRatio(),
+      productivity: this.productivity(),
+      productivityGrowthPerMinute: this.productivityGrowthPerMinute(),
+      investmentRate: this.investmentRate(),
       allies: this.alliances().map((a) => a.other(this).smallID()),
       embargoes: new Set([...this.embargoes.keys()].map((p) => p.toString())),
       isTraitor: this.isTraitor(),
@@ -703,7 +710,7 @@ export class PlayerImpl implements Player {
   }
 
   population(): number {
-    return Number(this._troops + this._workers);
+    return this.workers() + this.troops();
   }
   totalPopulation(): number {
     return this.population() + this.attackingTroops();
@@ -742,6 +749,13 @@ export class PlayerImpl implements Player {
     }
     this._targetTroopRatio = toInt(target * 100);
   }
+  investmentRate(): number {
+    return this._investmentRate;
+  }
+
+  setInvestmentRate(rate: number): void {
+    this._investmentRate = Math.min(1, Math.max(0, rate));
+  }
 
   troops(): number {
     return Number(this._troops);
@@ -763,6 +777,48 @@ export class PlayerImpl implements Player {
     return Number(toRemove);
   }
 
+  productivity(): number {
+    return this._productivity;
+  }
+  productivityGrowthPerMinute(): number {
+    return this._productivityGrowthPerMinute;
+  }
+  updateProductivity(): void {
+    const alpha = 0.0004;
+    const beta = 0.5;
+
+    const maxPop = this.mg.config().maxPopulation(this);
+    const workers = this.workers();
+    const rate = (this._investmentRate * workers) / maxPop;
+    const growth = alpha * Math.pow(rate, beta);
+
+    if (!Number.isFinite(growth) || growth < 0) {
+      console.warn("[updateProductivity] Invalid growth", {
+        productivityBefore: this._productivity,
+        investmentRate: this._investmentRate,
+        workers,
+        maxPop,
+        rate,
+        growth,
+        player: this.name?.(),
+      });
+      return; // skip update
+    }
+
+    this._productivity *= 1 + growth;
+    // Store per-minute growth for display
+    this._productivityGrowthPerMinute =
+      ((1 + growth) ** 600 - 1) * this._productivity;
+    if (this._productivity > this._maxproductivity) {
+      this._maxproductivity = this._productivity;
+    }
+  }
+  removeProductivity(amount: number): void {
+    if (amount < 0) {
+      throw new Error(`Cannot remove negative productivity: ${amount}`);
+    }
+    this._productivity = Math.max(0.33, this._productivity - amount);
+  }
   hospitalReturns(): number {
     return this._hospitalReturns;
   }

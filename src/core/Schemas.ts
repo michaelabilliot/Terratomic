@@ -30,6 +30,7 @@ export type Intent =
   | DonateGoldIntent
   | DonateTroopsIntent
   | TargetTroopRatioIntent
+  | InvestmentRateIntent
   | BuildUnitIntent
   | EmbargoIntent
   | QuickChatIntent
@@ -54,6 +55,7 @@ export type EmbargoIntent = z.infer<typeof EmbargoIntentSchema>;
 export type TargetTroopRatioIntent = z.infer<
   typeof TargetTroopRatioIntentSchema
 >;
+export type InvestmentRateIntent = z.infer<typeof InvestmentRateIntentSchema>;
 export type BuildUnitIntent = z.infer<typeof BuildUnitIntentSchema>;
 export type MoveWarshipIntent = z.infer<typeof MoveWarshipIntentSchema>;
 export type QuickChatIntent = z.infer<typeof QuickChatIntentSchema>;
@@ -260,6 +262,11 @@ export const TargetTroopRatioIntentSchema = BaseIntentSchema.extend({
   ratio: z.number().min(0).max(1),
 });
 
+export const InvestmentRateIntentSchema = BaseIntentSchema.extend({
+  type: z.literal("investment_rate"),
+  rate: z.number().min(0).max(1),
+});
+
 export const BuildUnitIntentSchema = BaseIntentSchema.extend({
   type: z.literal("build_unit"),
   unit: z.enum(UnitType),
@@ -310,6 +317,7 @@ const IntentSchema = z.discriminatedUnion("type", [
   DonateGoldIntentSchema,
   DonateTroopIntentSchema,
   TargetTroopRatioIntentSchema,
+  InvestmentRateIntentSchema,
   BuildUnitIntentSchema,
   EmbargoIntentSchema,
   MoveWarshipIntentSchema,
