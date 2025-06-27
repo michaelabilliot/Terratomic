@@ -111,6 +111,9 @@ export interface PlayerUpdate {
   totalPopulation: number;
   hospitalReturns: number;
   workers: number;
+  productivity: number;
+  productivityGrowthPerMinute: number;
+  investmentRate: number;
   troops: number;
   targetTroopRatio: number;
   allies: number[];

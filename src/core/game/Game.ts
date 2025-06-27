@@ -474,6 +474,12 @@ export interface Player {
   workers(): number;
   troops(): number;
   targetTroopRatio(): number;
+  productivity(): number; // Returns the productivity rate based on investment rate
+  updateProductivity(): void;
+  productivityGrowthPerMinute(): number; // Returns the productivity growth per minute
+  removeProductivity(amount: number): void;
+  investmentRate(): number; // Returns the investment rate (0 to 1)
+  setInvestmentRate(rate: number): void;
   addGold(toAdd: Gold): void;
   removeGold(toRemove: Gold): Gold;
   addWorkers(toAdd: number): void;

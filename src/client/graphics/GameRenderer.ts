@@ -40,7 +40,10 @@ export function createRenderer(
 ): GameRenderer {
   const transformHandler = new TransformHandler(game, eventBus, canvas);
 
-  const uiState = { attackRatio: 20 };
+  const uiState: UIState = {
+    attackRatio: 0.2, // 20% as a float
+    investmentRate: 0.5, // 50% default investment rate
+  };
 
   //hide when the game renders
   const startingModal = document.querySelector(

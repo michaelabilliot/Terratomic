@@ -204,6 +204,10 @@ export class NukeExecution implements Execution {
       const owner = this.mg.owner(tile);
       if (owner.isPlayer()) {
         owner.relinquish(tile);
+        const tileCount = owner.numTilesOwned();
+        if (tileCount > 0) {
+          owner.removeProductivity(3 / tileCount);
+        }
         owner.removeTroops(
           this.mg
             .config()

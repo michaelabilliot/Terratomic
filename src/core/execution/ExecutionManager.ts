@@ -19,6 +19,7 @@ import { MoveWarshipExecution } from "./MoveWarshipExecution";
 import { NoOpExecution } from "./NoOpExecution";
 import { QuickChatExecution } from "./QuickChatExecution";
 import { RetreatExecution } from "./RetreatExecution";
+import { SetInvestmentRateExecution } from "./SetInvestmentRateExecution";
 import { SetTargetTroopRatioExecution } from "./SetTargetTroopRatioExecution";
 import { SpawnExecution } from "./SpawnExecution";
 import { TargetPlayerExecution } from "./TargetPlayerExecution";
@@ -102,6 +103,8 @@ export class Executor {
         return new DonateGoldExecution(player, intent.recipient, intent.gold);
       case "troop_ratio":
         return new SetTargetTroopRatioExecution(player, intent.ratio);
+      case "investment_rate":
+        return new SetInvestmentRateExecution(player, intent.rate);
       case "embargo":
         return new EmbargoExecution(player, intent.targetID, intent.action);
       case "build_unit":

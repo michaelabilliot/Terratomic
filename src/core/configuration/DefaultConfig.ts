@@ -725,7 +725,25 @@ export class DefaultConfig implements Config {
   }
 
   goldAdditionRate(player: Player): bigint {
-    return BigInt(Math.floor(0.081 * player.workers() ** 0.65));
+    const base = 0.06 * player.workers() ** 0.65;
+    const productivity = player.productivity();
+    const investmentRate = player.investmentRate();
+    const grossGold = base * productivity;
+    const netGold = grossGold * (1 - investmentRate);
+
+    if (!Number.isFinite(netGold)) {
+      console.warn("[goldAdditionRate] netGold is NaN or invalid", {
+        workers: player.workers(),
+        productivity,
+        investmentRate,
+        base,
+        grossGold,
+        netGold,
+      });
+      return 0n;
+    }
+
+    return BigInt(Math.floor(netGold));
   }
 
   troopAdjustmentRate(player: Player): number {

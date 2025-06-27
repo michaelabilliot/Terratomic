@@ -5,7 +5,10 @@ import { EventBus } from "../../../core/EventBus";
 import { Gold } from "../../../core/game/Game";
 import { GameView } from "../../../core/game/GameView";
 import { AttackRatioEvent } from "../../InputHandler";
-import { SendSetTargetTroopRatioEvent } from "../../Transport";
+import {
+  SendSetInvestmentRateEvent,
+  SendSetTargetTroopRatioEvent,
+} from "../../Transport";
 import { renderNumber, renderTroops } from "../../Utils";
 import { UIState } from "../UIState";
 import { Layer } from "./Layer";
@@ -24,6 +27,9 @@ export class ControlPanel extends LitElement implements Layer {
 
   @state()
   private currentTroopRatio = 0.6;
+
+  @state()
+  private investmentRate: number = 0.5; // default to 50%
 
   @state()
   private _population: number;
@@ -53,6 +59,12 @@ export class ControlPanel extends LitElement implements Layer {
   private _gold: Gold;
 
   @state()
+  private _productivity: number;
+
+  @state()
+  private _productivityGrowth: number;
+
+  @state()
   private _goldPerSecond: Gold;
 
   private _lastPopulationIncreaseRate: number;
@@ -68,6 +80,10 @@ export class ControlPanel extends LitElement implements Layer {
     this.targetTroopRatio = Number(
       localStorage.getItem("settings.troopRatio") ?? "0.6",
     );
+    this.investmentRate = Number(
+      localStorage.getItem("settings.investmentRate") ?? "0.5",
+    );
+    this.uiState.investmentRate = this.investmentRate;
     this.init_ = true;
     this.uiState.attackRatio = this.attackRatio;
     this.currentTroopRatio = this.targetTroopRatio;
@@ -102,6 +118,7 @@ export class ControlPanel extends LitElement implements Layer {
       this.eventBus.emit(
         new SendSetTargetTroopRatioEvent(this.targetTroopRatio),
       );
+      this.eventBus.emit(new SendSetInvestmentRateEvent(this.investmentRate));
       this.init_ = false;
     }
 
@@ -126,6 +143,8 @@ export class ControlPanel extends LitElement implements Layer {
     this._maxPopulation = this.game.config().maxPopulation(player);
     this._hospitalReturns = player.hospitalReturns() * 10;
     this._gold = player.gold();
+    this._productivity = player.productivity();
+    this._productivityGrowth = player.productivityGrowthPerMinute();
     this._troops = player.troops();
     this._workers = player.workers();
     this.popRate = this.game.config().populationIncreaseRate(player) * 10;
@@ -137,6 +156,9 @@ export class ControlPanel extends LitElement implements Layer {
 
   onAttackRatioChange(newRatio: number) {
     this.uiState.attackRatio = newRatio;
+  }
+  onInvestmentRateChange(newRate: number) {
+    this.eventBus.emit(new SendSetInvestmentRateEvent(newRate));
   }
 
   renderLayer(context: CanvasRenderingContext2D) {
@@ -307,6 +329,42 @@ export class ControlPanel extends LitElement implements Layer {
                 this.onAttackRatioChange(this.attackRatio);
               }}
               class="absolute left-0 right-0 top-2 m-0 h-4 cursor-pointer attackRatio"
+            />
+          </div>
+        </div>
+        <div class="relative mt-4 lg:mb-4">
+          <label class="block text-white mb-1" translate="no">
+            Production Investment Rate:
+            ${(this.investmentRate * 100).toFixed(0)}%
+          </label>
+          <div
+            class="text-white text-right text-xs opacity-60 mt-1"
+            translate="no"
+          >
+            Prod: ${Math.round(this._productivity * 100)}%
+            (${this._productivityGrowth >= 0 ? "+" : ""}${(
+              this._productivityGrowth * 100
+            ).toFixed(1)}%/min)
+          </div>
+          <div class="relative h-8">
+            <div
+              class="absolute left-0 right-0 top-3 h-2 bg-white/20 rounded"
+            ></div>
+            <div
+              class="absolute left-0 top-3 h-2 bg-green-400/60 rounded transition-all duration-300"
+              style="width: ${this.investmentRate * 100}%"
+            ></div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              .value=${(this.investmentRate * 100).toString()}
+              @input=${(e: Event) => {
+                this.investmentRate =
+                  parseInt((e.target as HTMLInputElement).value) / 100;
+                this.onInvestmentRateChange(this.investmentRate);
+              }}
+              class="absolute left-0 right-0 top-2 m-0 h-4 cursor-pointer"
             />
           </div>
         </div>
