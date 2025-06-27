@@ -143,6 +143,8 @@ export interface Config {
   traitorDuration(): number;
   nukeMagnitudes(unitType: UnitType): NukeMagnitude;
   defaultNukeSpeed(): number;
+  defaultNukeTargetableRange(): number;
+  defaultSamRange(): number;
   nukeDeathFactor(humans: number, tilesOwned: number): number;
   structureMinDist(): number;
   isReplay(): boolean;
