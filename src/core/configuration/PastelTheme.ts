@@ -31,8 +31,8 @@ export class PastelTheme implements Theme {
     colord({ r: 125, g: 255, b: 75 }), // Warmer tint
     colord({ r: 115, g: 250, b: 68 }), // Cooler tint
   ];
-  private water = colord({ r: 70, g: 132, b: 180 });
-  private shorelineWater = colord({ r: 100, g: 143, b: 255 });
+  private water = colord({ r: 57, g: 74, b: 159 });
+  private shorelineWater = colord({ r: 87, g: 85, b: 234 });
 
   private _selfColor = colord({ r: 0, g: 255, b: 0 });
   private _allyColor = colord({ r: 255, g: 255, b: 0 });
@@ -117,20 +117,20 @@ export class PastelTheme implements Theme {
 
       case TerrainType.Plains:
         return colord({
-          r: 190,
-          g: 220 - 2 * mag,
-          b: 138,
+          r: 196,
+          g: 202 - 2 * mag,
+          b: 130,
         });
       case TerrainType.Highland:
         return colord({
-          r: 200 + 2 * mag,
-          g: 183 + 2 * mag,
-          b: 138 + 2 * mag,
+          r: 192 + 2 * mag,
+          g: 173 + 2 * mag,
+          b: 143 + 2 * mag,
         });
       case TerrainType.Mountain:
         return colord({
-          r: 230 + mag / 2,
-          g: 230 + mag / 2,
+          r: 211 + mag / 2,
+          g: 206 + mag / 2,
           b: 230 + mag / 2,
         });
     }
