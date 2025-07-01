@@ -41,7 +41,16 @@ Until then, open issues, submit pull requests or join the discussion [on Discord
 
 ## 🛠 Licensing
 
-- `src/client`: GPLv3
-- `src/core` and `src/server`: MIT
+Terratomic is a fork of [OpenFront.io](https://github.com/openfrontio/OpenFrontIO), which was originally licensed under a combination of GPLv3 (for `src/client`) and MIT (for the rest of the code). That project did not include license headers in individual files.
+
+As part of this fork, we have **unified the license under GPLv3** for all parts of the project, **except** the `proprietary/` folder, which is governed by a separate proprietary license and a Contributor License Agreement (CLA).
+
+### 📂 Folder Licensing Summary
+
+- `src/client`, `src/core`, `src/server`, `src/scripts`, `tests/`: **GPLv3**
+- `resources/`: **GPLv3**
+- `proprietary/`: **Proprietary** – See [CLA.md](./CLA.md) for contributor terms
+
+Some third-party files may retain their original licenses (e.g. MIT); where applicable, these are noted in headers or accompanying files.
 
 © 2025 Terratomic Team
