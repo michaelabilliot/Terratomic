@@ -21,7 +21,7 @@ import {
   HashUpdate,
   WinUpdate,
 } from "../core/game/GameUpdates";
-import { GameView, PlayerView } from "../core/game/GameView";
+import { GameView, PlayerView, UnitView } from "../core/game/GameView";
 import { loadTerrainMap, TerrainMapData } from "../core/game/TerrainMapLoader";
 import { UserSettings } from "../core/game/UserSettings";
 import { WorkerClient } from "../core/worker/WorkerClient";
@@ -31,6 +31,7 @@ import {
   InputHandler,
   MouseMoveEvent,
   MouseUpEvent,
+  UnitSelectionEvent,
 } from "./InputHandler";
 import { endGame, startGame, startTime } from "./LocalPersistantStats";
 import { getPersistentID } from "./Main";
@@ -186,6 +187,8 @@ export class ClientGameRunner {
   private lastMessageTime: number = 0;
   private connectionCheckInterval: NodeJS.Timeout | null = null;
 
+  private selectedUnit: UnitView | null = null;
+
   constructor(
     private lobby: LobbyConfig,
     private eventBus: EventBus,
@@ -256,6 +259,13 @@ export class ClientGameRunner {
       DoGroundAttackEvent,
       this.doGroundAttackUnderCursor.bind(this),
     );
+    this.eventBus.on(UnitSelectionEvent, (e) => {
+      if (e.isSelected) {
+        this.selectedUnit = e.unit;
+      } else if (this.selectedUnit === e.unit) {
+        this.selectedUnit = null;
+      }
+    });
 
     this.renderer.initialize();
     this.input.initialize();
@@ -386,6 +396,36 @@ export class ClientGameRunner {
     }
     console.log(`clicked cell ${cell}`);
     const tile = this.gameView.ref(cell.x, cell.y);
+    // Cancel if selecting a friendly fighter jet
+    if (this.myPlayer === null) {
+      const myPlayer = this.gameView.playerByClientID(this.lobby.clientID);
+      if (myPlayer === null) return;
+      this.myPlayer = myPlayer;
+    }
+    const allJets = this.gameView.units(UnitType.FighterJet);
+
+    const units = allJets.filter((u) => {
+      const isActive = u.isActive();
+      const owner = u.owner();
+      const ownerMatch = owner === this.myPlayer;
+      const dist = this.gameView.manhattanDist(u.tile(), tile);
+      const inRange = dist <= 10;
+
+      return isActive && ownerMatch && inRange;
+    });
+
+    if (units.length > 0) {
+      return;
+    }
+
+    if (
+      this.selectedUnit &&
+      this.selectedUnit.type() === UnitType.FighterJet &&
+      this.selectedUnit.owner() === this.myPlayer
+    ) {
+      return; // Skip attack — click is for moving the jet
+    }
+
     if (
       this.gameView.isLand(tile) &&
       !this.gameView.hasOwner(tile) &&
