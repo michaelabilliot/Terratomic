@@ -108,6 +108,7 @@ export interface Config {
   // When computing likelihood of trading for any given port, the X closest port
   // are twice more likely to be selected. X is determined below.
   proximityBonusPortsNb(totalPorts: number): number;
+  proximityBonusAirfieldsNumber(totalAirfields: number): number;
   maxPopulation(player: Player | PlayerView): number;
   cityPopulationIncrease(): number;
   boatAttackAmount(attacker: Player, defender: Player | TerraNullius): number;
@@ -125,6 +126,16 @@ export interface Config {
   unitInfo(type: UnitType): UnitInfo;
   tradeShipGold(dist: number): Gold;
   tradeShipSpawnRate(numberOfPorts: number): number;
+  cargoPlaneGold(dist: number): Gold;
+  cargoPlaneSpawnRate(numberOfAirplanes: number): number;
+  cargoPlaneMaxNumber(): number;
+  cargoPlanesEnabled(): boolean;
+  bombersEnabled(): boolean;
+  bomberDropCadence(): number;
+  bomberPayload(): number;
+  bomberSpawnInterval(): number;
+  bomberTargetRange(): number;
+  bomberExplosionRadius(): number;
   safeFromPiratesCooldownMax(): number;
   defensePostRange(): number;
   SAMCooldown(): number;
@@ -138,6 +149,14 @@ export interface Config {
   warshipTargettingRange(): number;
   defensePostShellAttackRate(): number;
   defensePostTargettingRange(): number;
+  fighterJetPatrolRange(): number;
+  fighterJetTargettingRange(): number;
+  fighterJetAttackRate(): number;
+  fighterJetSpeed(): number;
+  fighterJetHealingAmount(): number;
+  fighterJetTargetReachedDistance(): number;
+  fighterJetDogfightDistance(): number;
+  fighterJetMinDogfightDistance(): number;
   // 0-1
   traitorDefenseDebuff(): number;
   traitorDuration(): number;

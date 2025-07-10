@@ -14,6 +14,7 @@ import {
   Game,
   GameMode,
   GameUpdates,
+  isStructureType,
   MessageType,
   Nation,
   Player,
@@ -586,6 +587,27 @@ export class GameImpl implements Game {
     });
   }
 
+  public bomberExplosion(tile: TileRef, radius: number, owner: Player): void {
+    const r2 = radius * radius;
+    this.forEachTile((t) => {
+      if (this.euclideanDistSquared(tile, t) <= r2) {
+        const units = this.unitsAt(t);
+        for (const u of units) {
+          const uowner = u.owner();
+          if (!uowner.isPlayer()) continue;
+          if (uowner.id() === owner.id()) continue;
+          if (owner.isFriendly(uowner)) continue;
+
+          if (isStructureType(u.type())) {
+            u.modifyHealth(-250);
+          } else {
+            u.delete(true, owner);
+          }
+        }
+      }
+    });
+  }
+
   sendEmojiUpdate(msg: EmojiMessage): void {
     this.addUpdate({
       type: GameUpdateType.Emoji,
@@ -672,6 +694,9 @@ export class GameImpl implements Game {
 
   addUnit(u: Unit) {
     this.unitGrid.addUnit(u);
+  }
+  unitsAt(tile: TileRef): Unit[] {
+    return this.unitGrid.unitsAt(tile) as Unit[];
   }
   removeUnit(u: Unit) {
     this.unitGrid.removeUnit(u);

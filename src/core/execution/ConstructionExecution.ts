@@ -9,8 +9,10 @@ import {
 } from "../game/Game";
 import { TileRef } from "../game/GameMap";
 import { AcademyExecution } from "./AcademyExecution";
+import { AirfieldExecution } from "./AirfieldExecution";
 import { CityExecution } from "./CityExecution";
 import { DefensePostExecution } from "./DefensePostExecution";
+import { FighterJetExecution } from "./FighterJetExecution";
 import { HospitalExecution } from "./HospitalExecution";
 import { MirvExecution } from "./MIRVExecution";
 import { MissileSiloExecution } from "./MissileSiloExecution";
@@ -102,6 +104,11 @@ export class ConstructionExecution implements Execution {
           new WarshipExecution({ owner: player, patrolTile: this.tile }),
         );
         break;
+      case UnitType.FighterJet:
+        this.mg.addExecution(
+          new FighterJetExecution({ owner: player, patrolTile: this.tile }),
+        );
+        break;
       case UnitType.Port:
         this.mg.addExecution(new PortExecution(player, this.tile));
         break;
@@ -122,6 +129,9 @@ export class ConstructionExecution implements Execution {
         break;
       case UnitType.Academy:
         this.mg.addExecution(new AcademyExecution(player, this.tile));
+        break;
+      case UnitType.Airfield:
+        this.mg.addExecution(new AirfieldExecution(player, this.tile));
         break;
       default:
         throw Error(`unit type ${this.constructionType} not supported`);

@@ -30,6 +30,7 @@ export class UnitImpl implements Unit {
   private _patrolTile: TileRef | undefined;
   private _level: number = 1;
   private _targetable: boolean = true;
+  private _accumulatedRegen: number = 0;
 
   constructor(
     private _type: UnitType,
@@ -55,6 +56,7 @@ export class UnitImpl implements Unit {
 
     switch (this._type) {
       case UnitType.Warship:
+      case UnitType.FighterJet:
       case UnitType.Port:
       case UnitType.MissileSilo:
       case UnitType.DefensePost:
@@ -168,6 +170,7 @@ export class UnitImpl implements Unit {
   setOwner(newOwner: PlayerImpl): void {
     switch (this._type) {
       case UnitType.Warship:
+      case UnitType.FighterJet:
       case UnitType.Port:
       case UnitType.MissileSilo:
       case UnitType.DefensePost:
@@ -195,11 +198,28 @@ export class UnitImpl implements Unit {
   }
 
   modifyHealth(delta: number, attacker?: Player): void {
-    this._health = withinInt(
-      this._health + toInt(delta),
-      0n,
-      toInt(this.info().maxHealth ?? 1),
-    );
+    if (delta > 0) {
+      // Regeneratie
+      this._accumulatedRegen += delta;
+      const integerPart = Math.floor(this._accumulatedRegen);
+      if (integerPart > 0) {
+        this._health = withinInt(
+          this._health + BigInt(integerPart),
+          0n,
+          toInt(this.info().maxHealth ?? 1),
+        );
+        this._accumulatedRegen -= integerPart;
+      }
+    } else {
+      // Schade (negatieve delta)
+      this._health = withinInt(
+        this._health + toInt(delta), // Delta is al negatief
+        0n,
+        toInt(this.info().maxHealth ?? 1),
+      );
+      this._accumulatedRegen = 0; // Reset accumulatie bij schade
+    }
+    this.mg.addUpdate(this.toUpdate());
     if (this._health === 0n) {
       this.delete(true, attacker);
     }
@@ -213,7 +233,11 @@ export class UnitImpl implements Unit {
     this._active = false;
     this.mg.addUpdate(this.toUpdate());
     this.mg.removeUnit(this);
-    if (displayMessage !== false && this._type !== UnitType.MIRVWarhead) {
+    if (
+      displayMessage !== false &&
+      this._type !== UnitType.MIRVWarhead &&
+      this._type !== UnitType.Bomber
+    ) {
       this.mg.displayMessage(
         `Your ${this._type} was destroyed`,
         MessageType.UNIT_DESTROYED,
@@ -236,6 +260,7 @@ export class UnitImpl implements Unit {
         case UnitType.Port:
         case UnitType.SAMLauncher:
         case UnitType.Warship:
+        case UnitType.FighterJet:
           this.mg.stats().unitDestroy(destroyer, this._type);
           this.mg.stats().unitLose(this.owner(), this._type);
           break;

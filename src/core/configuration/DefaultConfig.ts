@@ -292,6 +292,67 @@ export class DefaultConfig implements Config {
     return Math.round(10 * Math.pow(numberOfPorts, 0.37));
   }
 
+  // Cargoplanes (Turned off for now)
+  cargoPlanesEnabled(): boolean {
+    return false;
+  }
+  cargoPlaneGold(distance: number): Gold {
+    const tradeShipGold = this.tradeShipGold(distance);
+    return BigInt(Math.floor(Number(tradeShipGold) * 0.6));
+  }
+  cargoPlaneSpawnRate(numberOfAirfields: number): number {
+    return Math.min(50, Math.round(10 * Math.pow(numberOfAirfields, 0.6)));
+  }
+  cargoPlaneMaxNumber(): number {
+    return 3;
+  }
+
+  // Bomber planes
+  bombersEnabled(): boolean {
+    return true;
+  }
+  bomberSpawnInterval(): number {
+    return 20;
+  }
+  bomberPayload(): number {
+    return 1;
+  }
+  bomberDropCadence(): number {
+    return 1;
+  }
+  bomberTargetRange(): number {
+    return 250;
+  }
+  bomberExplosionRadius(): number {
+    return 4;
+  }
+
+  // Fighter Jets
+  fighterJetPatrolRange(): number {
+    return 75;
+  }
+  fighterJetTargettingRange(): number {
+    return 130;
+  }
+  fighterJetAttackRate(): number {
+    return 15;
+  }
+  fighterJetSpeed(): number {
+    return 2;
+  }
+  fighterJetHealingAmount(): number {
+    return 1;
+  }
+  fighterJetTargetReachedDistance(): number {
+    return 10;
+  }
+  fighterJetDogfightDistance(): number {
+    return 40;
+  }
+  fighterJetMinDogfightDistance(): number {
+    return 10;
+  }
+
   unitInfo(type: UnitType): UnitInfo {
     switch (type) {
       case UnitType.TransportShip:
@@ -337,6 +398,7 @@ export class DefaultConfig implements Config {
                 ),
           territoryBound: true,
           constructionDuration: this.instantBuild() ? 0 : 2 * 10,
+          maxHealth: 1000,
         };
       case UnitType.AtomBomb:
         return {
@@ -380,6 +442,7 @@ export class DefaultConfig implements Config {
               : 1_000_000n,
           territoryBound: true,
           constructionDuration: this.instantBuild() ? 0 : 10 * 10,
+          maxHealth: 1000,
         };
       case UnitType.DefensePost:
         return {
@@ -394,6 +457,7 @@ export class DefaultConfig implements Config {
                 ),
           territoryBound: true,
           constructionDuration: this.instantBuild() ? 0 : 5 * 10,
+          maxHealth: 1000,
         };
       case UnitType.SAMLauncher:
         return {
@@ -408,6 +472,7 @@ export class DefaultConfig implements Config {
                 ),
           territoryBound: true,
           constructionDuration: this.instantBuild() ? 0 : 30 * 10,
+          maxHealth: 1000,
         };
       case UnitType.City:
         return {
@@ -422,6 +487,7 @@ export class DefaultConfig implements Config {
                 ),
           territoryBound: true,
           constructionDuration: this.instantBuild() ? 0 : 2 * 10,
+          maxHealth: 1000,
         };
       case UnitType.Construction:
         return {
@@ -442,6 +508,7 @@ export class DefaultConfig implements Config {
                 ),
           territoryBound: true,
           constructionDuration: this.instantBuild() ? 0 : 2 * 10,
+          maxHealth: 1000,
         };
       case UnitType.Academy:
         return {
@@ -457,6 +524,48 @@ export class DefaultConfig implements Config {
                 ),
           territoryBound: true,
           constructionDuration: this.instantBuild() ? 0 : 2 * 10,
+          maxHealth: 1000,
+        };
+      case UnitType.Airfield:
+        return {
+          cost: (p: Player) =>
+            p.type() === PlayerType.Human && this.infiniteGold()
+              ? 0n
+              : BigInt(
+                  Math.min(
+                    2_000_000,
+                    Math.pow(2, p.unitsConstructed(UnitType.Airfield)) *
+                      400_000,
+                  ),
+                ),
+          territoryBound: true,
+          constructionDuration: this.instantBuild() ? 0 : 2 * 20,
+          maxHealth: 1000,
+        };
+      case UnitType.CargoPlane:
+        return {
+          cost: () => 0n,
+          territoryBound: false,
+        };
+      case UnitType.Bomber:
+        return {
+          cost: () => 0n,
+          territoryBound: false,
+          maxHealth: 500,
+        };
+      case UnitType.FighterJet:
+        return {
+          cost: (p: Player) =>
+            p.type() === PlayerType.Human && this.infiniteGold()
+              ? 0n
+              : BigInt(
+                  Math.min(
+                    1_000_000,
+                    (p.unitsOwned(UnitType.FighterJet) + 1) * 250_000,
+                  ),
+                ),
+          territoryBound: false,
+          maxHealth: 750,
         };
       default:
         assertNever(type);
@@ -632,6 +741,10 @@ export class DefaultConfig implements Config {
 
   proximityBonusPortsNb(totalPorts: number) {
     return within(totalPorts / 3, 4, totalPorts);
+  }
+
+  proximityBonusAirfieldsNumber(totalAirfields: number) {
+    return within(totalAirfields / 3, 4, totalAirfields);
   }
 
   attackAmount(attacker: Player, defender: Player | TerraNullius) {

@@ -927,7 +927,13 @@ export class PlayerImpl implements Player {
       case UnitType.Hospital:
       case UnitType.Academy:
       case UnitType.Construction:
+      case UnitType.Airfield:
         return this.landBasedStructureSpawn(targetTile, validTiles);
+      case UnitType.CargoPlane:
+      case UnitType.Bomber:
+        return this.cargoPlaneSpawn(targetTile);
+      case UnitType.FighterJet:
+        return this.fighterJetSpawn(targetTile);
       default:
         assertNever(unitType);
     }
@@ -1041,6 +1047,27 @@ export class PlayerImpl implements Player {
   tradeShipSpawn(targetTile: TileRef): TileRef | false {
     const spawns = this.units(UnitType.Port).filter(
       (u) => u.tile() === targetTile,
+    );
+    if (spawns.length === 0) {
+      return false;
+    }
+    return spawns[0].tile();
+  }
+  cargoPlaneSpawn(targetTile: TileRef): TileRef | false {
+    const spawns = this.units(UnitType.Airfield).filter(
+      (u) => u.tile() === targetTile,
+    );
+    if (spawns.length === 0) {
+      return false;
+    }
+    return spawns[0].tile();
+  }
+
+  fighterJetSpawn(tile: TileRef): TileRef | false {
+    const spawns = this.units(UnitType.Airfield).sort(
+      (a, b) =>
+        this.mg.manhattanDist(a.tile(), tile) -
+        this.mg.manhattanDist(b.tile(), tile),
     );
     if (spawns.length === 0) {
       return false;
@@ -1193,5 +1220,35 @@ export class PlayerImpl implements Player {
       .forEach((p) => ports.push(p));
 
     return ports;
+  }
+
+  airfields(airfield: Unit): Unit[] {
+    const airfields = this.mg
+      .players()
+      .filter((p) => p !== airfield.owner() && p.canTrade(airfield.owner()))
+      .flatMap((p) => p.units(UnitType.Airfield))
+      .sort((p1, p2) => {
+        return (
+          this.mg.manhattanDist(airfield.tile(), p1.tile()) -
+          this.mg.manhattanDist(airfield.tile(), p2.tile())
+        );
+      });
+
+    for (
+      let i = 0;
+      i < this.mg.config().proximityBonusAirfieldsNumber(airfields.length);
+      i++
+    ) {
+      airfields.push(airfields[i]);
+    }
+
+    this.mg
+      .players()
+      .filter((p) => p !== airfield.owner() && p.canTrade(airfield.owner()))
+      .filter((p) => p.isAlliedWith(airfield.owner()))
+      .flatMap((p) => p.units(UnitType.Airfield))
+      .forEach((p) => airfields.push(p));
+
+    return airfields;
   }
 }

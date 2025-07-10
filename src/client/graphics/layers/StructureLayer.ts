@@ -7,6 +7,7 @@ import { Layer } from "./Layer";
 import { UnitInfoModal } from "./UnitInfoModal";
 
 import academyIcon from "../../../../resources/images/buildings/academy_icon.png";
+import airfieldIcon from "../../../../resources/images/buildings/airfield.png";
 import cityIcon from "../../../../resources/images/buildings/cityAlt1.png";
 import shieldIcon from "../../../../resources/images/buildings/fortAlt2.png";
 import hospitalIcon from "../../../../resources/images/buildings/hospital.png";
@@ -60,6 +61,12 @@ export class StructureLayer implements Layer {
       borderRadius: 8.525,
       territoryRadius: 6.525,
       borderType: UnitBorderType.Round,
+    },
+    [UnitType.Airfield]: {
+      icon: airfieldIcon,
+      borderRadius: 8.525,
+      territoryRadius: 6.525,
+      borderType: UnitBorderType.Square,
     },
     [UnitType.City]: {
       icon: cityIcon,
@@ -208,17 +215,31 @@ export class StructureLayer implements Layer {
     borderColor: Colord,
     config: UnitRenderConfig,
     distanceFN: DistanceFunction,
+    healthPercentage: number,
   ) {
-    // Draw border and territory
-    for (const tile of this.game.bfs(
-      unit.tile(),
-      distanceFN(unit.tile(), config.borderRadius, true),
-    )) {
-      this.paintCell(
-        new Cell(this.game.x(tile), this.game.y(tile)),
-        borderColor,
-        255,
-      );
+    const borderTiles = Array.from(
+      this.game.bfs(
+        unit.tile(),
+        distanceFN(unit.tile(), config.borderRadius, true),
+      ),
+    );
+
+    // Sort tiles by Y-coordinate to simulate a bottom-up fill
+    borderTiles.sort((a, b) => this.game.y(a) - this.game.y(b));
+
+    const healthyTileCount = Math.floor(borderTiles.length * healthPercentage);
+
+    for (let i = 0; i < borderTiles.length; i++) {
+      const tile = borderTiles[i];
+      const cell = new Cell(this.game.x(tile), this.game.y(tile));
+
+      if (i >= borderTiles.length - healthyTileCount) {
+        // This is the healthy part of the border
+        this.paintCell(cell, borderColor, 255);
+      } else {
+        // This is the unhealthy part of the border
+        this.paintCell(cell, colord({ r: 128, g: 128, b: 128 }), 255);
+      }
     }
 
     for (const tile of this.game.bfs(
@@ -298,12 +319,25 @@ export class StructureLayer implements Layer {
       borderColor = selectedUnitColor;
     }
 
-    this.drawBorder(unit, borderColor, config, drawFunction);
+    const healthPercentage = unit.hasHealth()
+      ? unit.health() / (unit.info().maxHealth ?? 1)
+      : 1;
+
+    this.drawBorder(unit, borderColor, config, drawFunction, healthPercentage);
 
     const startX = this.game.x(unit.tile()) - Math.floor(icon.width / 2);
     const startY = this.game.y(unit.tile()) - Math.floor(icon.height / 2);
+
     // Draw the icon
-    this.renderIcon(icon, startX, startY, icon.width, icon.height, unit);
+    this.renderIcon(
+      icon,
+      startX,
+      startY,
+      icon.width,
+      icon.height,
+      unit,
+      healthPercentage,
+    );
   }
 
   private renderIcon(
@@ -313,27 +347,41 @@ export class StructureLayer implements Layer {
     width: number,
     height: number,
     unit: UnitView,
+    healthPercentage: number,
   ) {
     let color = this.theme.borderColor(unit.owner());
     if (unit.type() === UnitType.Construction) {
       color = underConstructionColor;
     }
+
+    const healthyHeight = Math.floor(height * healthPercentage);
+
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const iconIndex = (y * width + x) * 4;
-        const alpha = iconData.data[iconIndex + 3];
+        const originalAlpha = iconData.data[iconIndex + 3];
 
-        if (alpha > 0) {
-          const targetX = startX + x;
-          const targetY = startY + y;
+        if (originalAlpha === 0) continue; // Sklip fully transparent pixels
 
-          if (
-            targetX >= 0 &&
-            targetX < this.game.width() &&
-            targetY >= 0 &&
-            targetY < this.game.height()
-          ) {
-            this.paintCell(new Cell(targetX, targetY), color, alpha);
+        const targetX = startX + x;
+        const targetY = startY + y;
+
+        if (
+          targetX >= 0 &&
+          targetX < this.game.width() &&
+          targetY >= 0 &&
+          targetY < this.game.height()
+        ) {
+          if (y >= height - healthyHeight) {
+            // This is the healthy part of the icon
+            this.paintCell(new Cell(targetX, targetY), color, originalAlpha);
+          } else {
+            // This is the unhealthy part of the icon
+            this.paintCell(
+              new Cell(targetX, targetY),
+              colord({ r: 128, g: 128, b: 128 }),
+              originalAlpha,
+            );
           }
         }
       }

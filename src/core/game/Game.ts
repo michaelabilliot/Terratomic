@@ -150,6 +150,10 @@ export enum UnitType {
   Construction = "Construction",
   Hospital = "Hospital",
   Academy = "Academy",
+  Airfield = "Air Field",
+  CargoPlane = "Cargo Plane",
+  Bomber = "Bomber",
+  FighterJet = "Fighter Jet", // Represents a Fighter Jet unit.
 }
 
 const _structureTypes: ReadonlySet<UnitType> = new Set([
@@ -219,6 +223,20 @@ export interface UnitParamsMap {
   };
 
   [UnitType.Construction]: {};
+
+  [UnitType.Airfield]: Record<string, never>;
+
+  [UnitType.CargoPlane]: {
+    targetUnit: Unit;
+  };
+
+  [UnitType.Bomber]: {
+    targetTile: TileRef;
+  };
+
+  [UnitType.FighterJet]: {
+    patrolTile: TileRef;
+  };
 }
 
 // Type helper to get params type for a specific unit type
@@ -577,6 +595,7 @@ export interface Player {
   toUpdate(): PlayerUpdate;
   playerProfile(): PlayerProfile;
   tradingPorts(port: Unit): Unit[];
+  airfields(airfield: Unit): Unit[];
   // WARNING: this operation is expensive.
   bestTransportShipSpawn(tile: TileRef): TileRef | false;
 }
@@ -616,6 +635,7 @@ export interface Game extends GameMap {
 
   // Units
   units(...types: UnitType[]): Unit[];
+  unitsAt(tile: TileRef): Unit[];
   unitInfo(type: UnitType): UnitInfo;
   nearbyUnits(
     tile: TileRef,
@@ -653,6 +673,7 @@ export interface Game extends GameMap {
   numTilesWithFallout(): number;
   // Optional as it's not initialized before the end of spawn phase
   stats(): Stats;
+  bomberExplosion(tile: TileRef, radius: number, owner: Player): void;
 }
 
 export interface PlayerActions {

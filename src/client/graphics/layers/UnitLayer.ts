@@ -10,7 +10,10 @@ import {
   MouseUpEvent,
   UnitSelectionEvent,
 } from "../../InputHandler";
-import { MoveWarshipIntentEvent } from "../../Transport";
+import {
+  MoveFighterJetIntentEvent,
+  MoveWarshipIntentEvent,
+} from "../../Transport";
 import { TransformHandler } from "../TransformHandler";
 import { Layer } from "./Layer";
 
@@ -35,6 +38,8 @@ export class UnitLayer implements Layer {
 
   private unitToTrail = new Map<UnitView, TileRef[]>();
 
+  private unitToLastAngle = new Map<UnitView, number>();
+
   private theme: Theme;
 
   private alternateView = false;
@@ -48,6 +53,7 @@ export class UnitLayer implements Layer {
 
   // Configuration for unit selection
   private readonly WARSHIP_SELECTION_RADIUS = 10; // Radius in game cells for warship selection hit zone
+  private readonly FIGHTER_JET_SELECTION_RADIUS = 10;
 
   constructor(
     private game: GameView,
@@ -109,6 +115,28 @@ export class UnitLayer implements Layer {
       });
   }
 
+  private findFighterJetsNearCell(cell: { x: number; y: number }): UnitView[] {
+    if (!this.game.isValidCoord(cell.x, cell.y)) {
+      return [];
+    }
+    const clickRef = this.game.ref(cell.x, cell.y);
+
+    return this.game
+      .units(UnitType.FighterJet)
+      .filter(
+        (unit) =>
+          unit.isActive() &&
+          unit.owner() === this.game.myPlayer() &&
+          this.game.manhattanDist(unit.tile(), clickRef) <=
+            this.FIGHTER_JET_SELECTION_RADIUS,
+      )
+      .sort((a, b) => {
+        const distA = this.game.manhattanDist(a.tile(), clickRef);
+        const distB = this.game.manhattanDist(b.tile(), clickRef);
+        return distA - distB;
+      });
+  }
+
   private onMouseUp(event: MouseUpEvent) {
     // Convert screen coordinates to world coordinates
     const cell = this.transformHandler.screenToWorldCoordinates(
@@ -118,19 +146,31 @@ export class UnitLayer implements Layer {
 
     // Find warships near this cell, sorted by distance
     const nearbyWarships = this.findWarshipsNearCell(cell);
+    const nearbyFighterJets = this.findFighterJetsNearCell(cell);
 
     if (this.selectedUnit) {
       const clickRef = this.game.ref(cell.x, cell.y);
-      if (this.game.isOcean(clickRef)) {
+      if (this.selectedUnit.type() === UnitType.FighterJet) {
+        this.eventBus.emit(
+          new MoveFighterJetIntentEvent(this.selectedUnit.id(), clickRef),
+        );
+      } else if (
+        this.selectedUnit.type() === UnitType.Warship &&
+        this.game.isOcean(clickRef)
+      ) {
         this.eventBus.emit(
           new MoveWarshipIntentEvent(this.selectedUnit.id(), clickRef),
         );
       }
       // Deselect
       this.eventBus.emit(new UnitSelectionEvent(this.selectedUnit, false));
+      return;
     } else if (nearbyWarships.length > 0) {
       // Toggle selection of the closest warship
       const clickedUnit = nearbyWarships[0];
+      this.eventBus.emit(new UnitSelectionEvent(clickedUnit, true));
+    } else if (nearbyFighterJets.length > 0) {
+      const clickedUnit = nearbyFighterJets[0];
       this.eventBus.emit(new UnitSelectionEvent(clickedUnit, true));
     }
   }
@@ -154,6 +194,7 @@ export class UnitLayer implements Layer {
     if (this.selectedUnit === unit && !unit.isActive()) {
       this.eventBus.emit(new UnitSelectionEvent(unit, false));
     }
+    this.unitToLastAngle.delete(unit);
   }
 
   renderLayer(context: CanvasRenderingContext2D) {
@@ -227,15 +268,25 @@ export class UnitLayer implements Layer {
       .filter((unitView) => isSpriteReady(unitView.type()))
       .forEach((unitView) => {
         const sprite = getColoredSprite(unitView, this.theme);
-        const clearsize = sprite.width + 1;
+        const clearsize = sprite.width * 2;
         const lastX = this.game.x(unitView.lastTile());
         const lastY = this.game.y(unitView.lastTile());
+        const angle = this.getUnitAngle(unitView);
+        if (angle !== null) {
+          this.context.save();
+          this.context.translate(lastX, lastY);
+          this.context.rotate(angle);
+          this.context.translate(-lastX, -lastY);
+        }
         this.context.clearRect(
           lastX - clearsize / 2,
           lastY - clearsize / 2,
           clearsize,
           clearsize,
         );
+        if (angle !== null) {
+          this.context.restore();
+        }
       });
   }
 
@@ -279,8 +330,17 @@ export class UnitLayer implements Layer {
       case UnitType.TradeShip:
         this.handleTradeShipEvent(unit);
         break;
+      case UnitType.CargoPlane:
+        this.handleCargoPlaneEvent(unit);
+        break;
       case UnitType.MIRVWarhead:
         this.handleMIRVWarhead(unit);
+        break;
+      case UnitType.Bomber:
+        this.handleBomberEvent(unit);
+        break;
+      case UnitType.FighterJet:
+        this.handleFighterJetEvent(unit);
         break;
       case UnitType.AtomBomb:
       case UnitType.HydrogenBomb:
@@ -437,6 +497,22 @@ export class UnitLayer implements Layer {
     this.drawSprite(unit);
   }
 
+  private handleCargoPlaneEvent(unit: UnitView) {
+    this.drawSprite(unit);
+  }
+
+  private handleBomberEvent(unit: UnitView) {
+    this.drawSprite(unit);
+  }
+
+  private handleFighterJetEvent(unit: UnitView) {
+    if (unit.targetUnitId()) {
+      this.drawSprite(unit, colord({ r: 200, b: 0, g: 0 }));
+    } else {
+      this.drawSprite(unit);
+    }
+  }
+
   private handleBoatEvent(unit: UnitView) {
     const rel = this.relationship(unit);
 
@@ -502,9 +578,13 @@ export class UnitLayer implements Layer {
 
     if (this.alternateView) {
       let rel = this.relationship(unit);
-      const dstPortId = unit.targetUnitId();
-      if (unit.type() === UnitType.TradeShip && dstPortId !== undefined) {
-        const target = this.game.unit(dstPortId)?.owner();
+      const destinationId = unit.targetUnitId();
+      if (
+        (unit.type() === UnitType.TradeShip ||
+          unit.type() === UnitType.CargoPlane) &&
+        destinationId !== undefined
+      ) {
+        const target = this.game.unit(destinationId)?.owner();
         const myPlayer = this.game.myPlayer();
         if (myPlayer !== null && target !== undefined) {
           if (myPlayer === target) {
@@ -540,6 +620,15 @@ export class UnitLayer implements Layer {
         this.context.save();
         this.context.globalAlpha = 0.4;
       }
+
+      const angle = this.getUnitAngle(unit);
+      if (angle !== null) {
+        this.context.save();
+        this.context.translate(x, y);
+        this.context.rotate(angle);
+        this.context.translate(-x, -y);
+      }
+
       this.context.drawImage(
         sprite,
         Math.round(x - sprite.width / 2),
@@ -547,9 +636,48 @@ export class UnitLayer implements Layer {
         sprite.width,
         sprite.width,
       );
+
+      if (angle !== null) {
+        this.context.restore();
+      }
+
       if (!targetable) {
         this.context.restore();
       }
     }
+  }
+
+  private getUnitAngle(unit: UnitView): number | null {
+    const lastTile = unit.lastTile();
+    const currentTile = unit.tile();
+
+    if (
+      lastTile &&
+      currentTile &&
+      (unit.type() === UnitType.Bomber ||
+        unit.type() === UnitType.FighterJet ||
+        unit.type() === UnitType.CargoPlane)
+    ) {
+      const lastPos = { x: this.game.x(lastTile), y: this.game.y(lastTile) };
+      const currentPos = {
+        x: this.game.x(currentTile),
+        y: this.game.y(currentTile),
+      };
+      const dx = currentPos.x - lastPos.x;
+      const dy = currentPos.y - lastPos.y;
+
+      if (dx === 0 && dy === 0) {
+        return this.unitToLastAngle.get(unit) ?? null;
+      }
+
+      let angle = Math.atan2(dy, dx);
+
+      if (unit.type() === UnitType.Bomber) {
+        angle += Math.PI / 2;
+      }
+      this.unitToLastAngle.set(unit, angle);
+      return angle;
+    }
+    return null;
   }
 }

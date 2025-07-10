@@ -4,6 +4,7 @@ import { PseudoRandom } from "../PseudoRandom";
 import { DistanceBasedBezierCurve } from "../utilities/Line";
 import { AStar, AStarResult, PathFindResultType } from "./AStar";
 import { MiniAStar } from "./MiniAStar";
+export { AStar, AStarResult, PathFindResultType };
 
 const parabolaMinHeight = 50;
 
@@ -85,6 +86,42 @@ export class AirPathFinder {
   }
 }
 
+export class StraightPathFinder {
+  constructor(private mg: GameMap) {}
+
+  nextTile(curr: TileRef, dst: TileRef, speed: number): TileRef | true {
+    const currX = this.mg.x(curr);
+    const currY = this.mg.y(curr);
+
+    const dstX = this.mg.x(dst);
+    const dstY = this.mg.y(dst);
+
+    const dx = dstX - currX;
+    const dy = dstY - currY;
+
+    const dist = Math.hypot(dx, dy);
+
+    if (dist <= speed) {
+      return true;
+    }
+
+    const dirX = dx / dist;
+    const dirY = dy / dist;
+
+    const nextX = Math.round(currX + dirX * speed);
+    const nextY = Math.round(currY + dirY * speed);
+
+    const remainingDx = dstX - nextX;
+    const remainingDy = dstY - nextY;
+    const remainingDist = Math.hypot(remainingDx, remainingDy);
+
+    if (remainingDist <= speed) {
+      return true;
+    } else {
+      return this.mg.ref(nextX, nextY);
+    }
+  }
+}
 export class PathFinder {
   private curr: TileRef | null = null;
   private dst: TileRef | null = null;
@@ -129,7 +166,6 @@ export class PathFinder {
       console.error("dst is null");
       return { type: PathFindResultType.PathNotFound };
     }
-
     if (this.game.manhattanDist(curr, dst) < dist) {
       return { type: PathFindResultType.Completed, node: curr };
     }
@@ -166,6 +202,13 @@ export class PathFinder {
       default:
         throw new Error("unexpected compute result");
     }
+  }
+
+  public reconstructPath(): TileRef[] {
+    if (this.path === null) {
+      return [];
+    }
+    return this.path;
   }
 
   private shouldRecompute(curr: TileRef, dst: TileRef) {

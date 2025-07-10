@@ -19,6 +19,9 @@ export class SAMLauncherExecution implements Execution {
   private MIRVWarheadSearchRadius = 400;
   private MIRVWarheadProtectionRadius = 50;
 
+  private cargoPlaneSearchRadius = 150;
+  private cargoPlaneCheckOffset: number = 0;
+
   private pseudoRandom: PseudoRandom | undefined;
 
   constructor(
@@ -33,6 +36,7 @@ export class SAMLauncherExecution implements Execution {
 
   init(mg: Game, ticks: number): void {
     this.mg = mg;
+    this.cargoPlaneCheckOffset = mg.ticks() % 20;
   }
 
   private getSingleTarget(): Unit | null {
@@ -193,6 +197,58 @@ export class SAMLauncherExecution implements Execution {
       } else {
         throw new Error("target is null");
       }
+    }
+    if ((this.mg.ticks() + this.cargoPlaneCheckOffset) % 20 === 0) {
+      this.interceptPlanes();
+    }
+  }
+
+  private interceptPlanes() {
+    const potentialAirborneTargets = this.mg.nearbyUnits(
+      this.sam!.tile(),
+      this.cargoPlaneSearchRadius,
+      [UnitType.CargoPlane, UnitType.Bomber, UnitType.FighterJet],
+    );
+    if (!this.sam) return;
+
+    const validAirborneTargets = potentialAirborneTargets.filter(({ unit }) => {
+      const unitOwner = unit.owner();
+      const targetUnitOwner = unit.targetUnit()?.owner();
+
+      if (unitOwner === this.player) return false;
+
+      if (this.player.isFriendly(unitOwner)) return false;
+      if (
+        targetUnitOwner === this.player ||
+        (targetUnitOwner && targetUnitOwner.isFriendly(this.player))
+      ) {
+        return false;
+      }
+
+      return !unit.targetedBySAM();
+    });
+
+    if (validAirborneTargets.length > 0) {
+      this.sam.launch();
+      const samOwner = this.sam!.owner();
+
+      this.mg.displayMessage(
+        `${validAirborneTargets.length} AirPlane(s) intercepted`,
+        MessageType.SAM_HIT,
+        samOwner.id(),
+      );
+
+      validAirborneTargets.forEach(({ unit: u }) => {
+        u.setTargetedBySAM(true);
+        this.mg.addExecution(
+          new SAMMissileExecution(
+            this.sam!.tile(),
+            this.sam!.owner(),
+            this.sam!,
+            u,
+          ),
+        );
+      });
     }
   }
 

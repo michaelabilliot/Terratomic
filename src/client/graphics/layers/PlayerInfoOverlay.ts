@@ -249,6 +249,10 @@ export class PlayerInfoOverlay extends LitElement implements Layer {
           ${player.units(UnitType.Port).length}
         </div>
         <div class="text-sm opacity-80" translate="no">
+          ${translateText("player_info_overlay.airfields")}:
+          ${player.units(UnitType.Airfield).length}
+        </div>
+        <div class="text-sm opacity-80" translate="no">
           ${translateText("player_info_overlay.cities")}:
           ${player.units(UnitType.City).length}
         </div>
@@ -271,6 +275,10 @@ export class PlayerInfoOverlay extends LitElement implements Layer {
         <div class="text-sm opacity-80" translate="no">
           ${translateText("player_info_overlay.warships")}:
           ${player.units(UnitType.Warship).length}
+        </div>
+        <div class="text-sm opacity-80" translate="no">
+          ${translateText("player_info_overlay.fighter_jets")}:
+          ${player.units(UnitType.FighterJet).length}
         </div>
         ${relationHtml}
       </div>

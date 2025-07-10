@@ -42,37 +42,51 @@ export class SAMMissileExecution implements Execution {
       this.active = false;
       return;
     }
-    // Mirv warheads are too fast, and mirv shouldn't be stopped ever
-    const nukesWhitelist = [UnitType.AtomBomb, UnitType.HydrogenBomb];
+
+    // MIRV warheads are too fast and MIRVs should not be stopped by SAMs.
+    const Whitelist = [
+      UnitType.AtomBomb,
+      UnitType.HydrogenBomb,
+      UnitType.CargoPlane,
+      UnitType.Bomber,
+      UnitType.FighterJet,
+    ];
+
     if (
       !this.target.isActive() ||
       !this.ownerUnit.isActive() ||
       this.target.owner() === this.SAMMissile.owner() ||
-      !nukesWhitelist.includes(this.target.type())
+      !Whitelist.includes(this.target.type())
     ) {
       this.SAMMissile.delete(false);
       this.active = false;
       return;
     }
+
     for (let i = 0; i < this.speed; i++) {
       const result = this.pathFinder.nextTile(
         this.SAMMissile.tile(),
         this.target.tile(),
       );
       if (result === true) {
-        this.mg.displayMessage(
-          `Missile intercepted ${this.target.type()}`,
-          MessageType.SAM_HIT,
-          this._owner.id(),
-        );
+        if (
+          this.target.type() === UnitType.AtomBomb ||
+          this.target.type() === UnitType.HydrogenBomb
+        ) {
+          this.mg.displayMessage(
+            `Missile intercepted ${this.target.type()}`,
+            MessageType.SAM_HIT,
+            this._owner.id(),
+          );
+
+          this.mg
+            .stats()
+            .bombIntercept(this._owner, this.target.type() as NukeType, 1);
+        }
         this.active = false;
         this.target.delete(true, this._owner);
         this.SAMMissile.delete(false);
 
-        // Record stats
-        this.mg
-          .stats()
-          .bombIntercept(this._owner, this.target.type() as NukeType, 1);
         return;
       } else {
         this.SAMMissile.move(result);
@@ -83,6 +97,7 @@ export class SAMMissileExecution implements Execution {
   isActive(): boolean {
     return this.active;
   }
+
   activeDuringSpawnPhase(): boolean {
     return false;
   }
