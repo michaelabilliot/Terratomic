@@ -139,6 +139,8 @@ export interface PlayerUpdate {
   outgoingAllianceRequests: PlayerID[];
   hasSpawned: boolean;
   betrayals?: bigint;
+  effectiveUnits: Record<UnitType, number>;
+  unitsOwned: Record<UnitType, number>;
 }
 
 export interface AllianceRequestUpdate {

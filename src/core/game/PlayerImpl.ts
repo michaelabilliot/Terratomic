@@ -183,6 +183,20 @@ export class PlayerImpl implements Player {
       outgoingAllianceRequests: outgoingAllianceRequests,
       hasSpawned: this.hasSpawned(),
       betrayals: stats?.betrayals,
+      effectiveUnits: Object.values(UnitType).reduce(
+        (acc, type) => {
+          acc[type] = this.effectiveUnits(type);
+          return acc;
+        },
+        {} as Record<UnitType, number>,
+      ),
+      unitsOwned: Object.values(UnitType).reduce(
+        (acc, type) => {
+          acc[type] = this.unitsOwned(type);
+          return acc;
+        },
+        {} as Record<UnitType, number>,
+      ),
     };
   }
 
