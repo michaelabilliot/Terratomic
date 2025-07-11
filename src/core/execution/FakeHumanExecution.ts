@@ -1,9 +1,7 @@
 import {
-  Cell,
   Difficulty,
   Execution,
   Game,
-  Gold,
   Nation,
   Player,
   PlayerID,
@@ -11,18 +9,16 @@ import {
   Relation,
   TerrainType,
   Tick,
-  Unit,
-  UnitType,
 } from "../game/Game";
-import { euclDistFN, manhattanDistFN, TileRef } from "../game/GameMap";
+import { TileRef } from "../game/GameMap";
 import { PseudoRandom } from "../PseudoRandom";
 import { GameID } from "../Schemas";
-import { calculateBoundingBox, flattenedEmojiTable, simpleHash } from "../Util";
-import { ConstructionExecution } from "./ConstructionExecution";
+import { flattenedEmojiTable, simpleHash } from "../Util";
 import { EmojiExecution } from "./EmojiExecution";
-import { NukeExecution } from "./NukeExecution";
+import { NukeExecutionHelper } from "./NukeExecutionHelper";
 import { SpawnExecution } from "./SpawnExecution";
 import { TransportShipExecution } from "./TransportShipExecution";
+import { UnitCreationHelper } from "./UnitCreationHelper";
 import { closestTwoTiles } from "./Util";
 import { BotBehavior } from "./utils/BotBehavior";
 
@@ -34,6 +30,8 @@ export class FakeHumanExecution implements Execution {
   private behavior: BotBehavior | null = null;
   private mg: Game;
   private player: Player | null = null;
+  private nukeHelper: NukeExecutionHelper | null = null;
+  private unitCreationHelper: UnitCreationHelper | null = null;
 
   private attackRate: number;
   private attackTick: number;
@@ -41,10 +39,12 @@ export class FakeHumanExecution implements Execution {
   private reserveRatio: number;
 
   private lastEmojiSent = new Map<Player, Tick>();
-  private lastNukeSent: [Tick, TileRef][] = [];
   private embargoMalusApplied = new Set<PlayerID>();
   private heckleEmoji: number[];
   private hasSetInvestmentRate = false;
+
+  // alongside other private fields
+  private boatDestinations: TileRef[] = [];
 
   constructor(
     gameID: GameID,
@@ -149,6 +149,22 @@ export class FakeHumanExecution implements Execution {
       );
     }
 
+    if (this.nukeHelper === null) {
+      this.nukeHelper = new NukeExecutionHelper(
+        this.random,
+        this.mg,
+        this.player,
+      );
+    }
+
+    if (this.unitCreationHelper === null) {
+      this.unitCreationHelper = new UnitCreationHelper(
+        this.random,
+        this.mg,
+        this.player,
+      );
+    }
+
     if (this.firstMove) {
       this.firstMove = false;
       this.behavior.sendAttack(this.mg.terraNullius());
@@ -169,10 +185,11 @@ export class FakeHumanExecution implements Execution {
 
     this.updateRelationsFromEmbargos();
     this.behavior.handleAllianceRequests();
-    this.handleEnemies();
-    this.handleUnits();
+    this.unitCreationHelper.handleUnits();
     this.handleEmbargoesToHostileNations();
-    this.maybeAttack();
+    this.handleTN();
+    this.handleEnemies();
+    //this.maybeAttack();
   }
 
   private maybeAttack() {
@@ -264,7 +281,11 @@ export class FakeHumanExecution implements Execution {
   }
 
   handleEnemies() {
-    if (this.player === null || this.behavior === null) {
+    if (
+      this.player === null ||
+      this.behavior === null ||
+      this.nukeHelper === null
+    ) {
       throw new Error("not initialized");
     }
     this.behavior.forgetOldEnemies();
@@ -272,7 +293,7 @@ export class FakeHumanExecution implements Execution {
     const enemy = this.behavior.selectEnemy();
     if (!enemy) return;
     this.maybeSendEmoji(enemy);
-    this.maybeSendNuke(enemy);
+    this.nukeHelper.maybeSendNuke(enemy);
     if (this.player.sharesBorderWith(enemy)) {
       this.behavior.sendAttack(enemy);
     } else {
@@ -295,126 +316,6 @@ export class FakeHumanExecution implements Execution {
     );
   }
 
-  private maybeSendNuke(other: Player) {
-    if (this.player === null) throw new Error("not initialized");
-    const silos = this.player.units(UnitType.MissileSilo);
-    if (
-      silos.length === 0 ||
-      this.player.gold() < this.cost(UnitType.AtomBomb) ||
-      other.type() === PlayerType.Bot ||
-      this.player.isOnSameTeam(other)
-    ) {
-      return;
-    }
-
-    const structures = other.units(
-      UnitType.City,
-      UnitType.DefensePost,
-      UnitType.MissileSilo,
-      UnitType.Port,
-      UnitType.SAMLauncher,
-      UnitType.Airfield,
-    );
-    const structureTiles = structures.map((u) => u.tile());
-    const randomTiles: (TileRef | null)[] = new Array(10);
-    for (let i = 0; i < randomTiles.length; i++) {
-      randomTiles[i] = this.randTerritoryTile(other);
-    }
-    const allTiles = randomTiles.concat(structureTiles);
-
-    let bestTile: TileRef | null = null;
-    let bestValue = 0;
-    this.removeOldNukeEvents();
-    outer: for (const tile of new Set(allTiles)) {
-      if (tile === null) continue;
-      for (const t of this.mg.bfs(tile, manhattanDistFN(tile, 15))) {
-        // Make sure we nuke at least 15 tiles in border
-        if (this.mg.owner(t) !== other) {
-          continue outer;
-        }
-      }
-      if (!this.player.canBuild(UnitType.AtomBomb, tile)) continue;
-      const value = this.nukeTileScore(tile, silos, structures);
-      if (value > bestValue) {
-        bestTile = tile;
-        bestValue = value;
-      }
-    }
-    if (bestTile !== null) {
-      this.sendNuke(bestTile);
-    }
-  }
-
-  private removeOldNukeEvents() {
-    const maxAge = 500;
-    const tick = this.mg.ticks();
-    while (
-      this.lastNukeSent.length > 0 &&
-      this.lastNukeSent[0][0] + maxAge < tick
-    ) {
-      this.lastNukeSent.shift();
-    }
-  }
-
-  private sendNuke(tile: TileRef) {
-    if (this.player === null) throw new Error("not initialized");
-    const tick = this.mg.ticks();
-    this.lastNukeSent.push([tick, tile]);
-    this.mg.addExecution(
-      new NukeExecution(UnitType.AtomBomb, this.player, tile),
-    );
-  }
-
-  private nukeTileScore(tile: TileRef, silos: Unit[], targets: Unit[]): number {
-    // Potential damage in a 25-tile radius
-    const dist = euclDistFN(tile, 25, false);
-    let tileValue = targets
-      .filter((unit) => dist(this.mg, unit.tile()))
-      .map((unit) => {
-        switch (unit.type()) {
-          case UnitType.City:
-            return 25_000;
-          case UnitType.DefensePost:
-            return 5_000;
-          case UnitType.MissileSilo:
-            return 50_000;
-          case UnitType.Port:
-            return 10_000;
-          case UnitType.Airfield:
-            return 12_000;
-          default:
-            return 0;
-        }
-      })
-      .reduce((prev, cur) => prev + cur, 0);
-
-    // Avoid areas defended by SAM launchers
-    const dist50 = euclDistFN(tile, 50, false);
-    tileValue -=
-      50_000 *
-      targets.filter(
-        (unit) =>
-          unit.type() === UnitType.SAMLauncher && dist50(this.mg, unit.tile()),
-      ).length;
-
-    // Prefer tiles that are closer to a silo
-    const siloTiles = silos.map((u) => u.tile());
-    const result = closestTwoTiles(this.mg, siloTiles, [tile]);
-    if (result === null) throw new Error("Missing result");
-    const { x: closestSilo } = result;
-    const distanceSquared = this.mg.euclideanDistSquared(tile, closestSilo);
-    const distanceToClosestSilo = Math.sqrt(distanceSquared);
-    tileValue -= distanceToClosestSilo * 30;
-
-    // Don't target near recent targets
-    tileValue -= this.lastNukeSent
-      .filter(([_tick, tile]) => dist(this.mg, tile))
-      .map((_) => 1_000_000)
-      .reduce((prev, cur) => prev + cur, 0);
-
-    return tileValue;
-  }
-
   private maybeSendBoatAttack(other: Player) {
     if (this.player === null) throw new Error("not initialized");
     if (this.player.isOnSameTeam(other)) return;
@@ -428,135 +329,17 @@ export class FakeHumanExecution implements Execution {
     if (closest === null) {
       return;
     }
+    if (this.isTooCloseToExistingBoat(closest.y)) return;
+    const troopsToSend = this.player.troops() / 5;
     this.mg.addExecution(
       new TransportShipExecution(
         this.player,
         other.id(),
         closest.y,
-        this.player.troops() / 5,
+        troopsToSend,
         null,
       ),
     );
-  }
-
-  private handleUnits() {
-    const player = this.player;
-    if (player === null) return;
-    return (
-      this.maybeSpawnStructure(UnitType.Port, 1) ||
-      this.maybeSpawnStructure(UnitType.Airfield, 1) ||
-      this.maybeSpawnStructure(UnitType.City, 2) ||
-      this.maybeSpawnWarship() ||
-      this.maybeSpawnStructure(UnitType.MissileSilo, 1)
-    );
-  }
-
-  private maybeSpawnStructure(type: UnitType, maxNum: number): boolean {
-    if (this.player === null) throw new Error("not initialized");
-    if (this.player.unitsOwned(type) >= maxNum) {
-      return false;
-    }
-    if (this.player.gold() < this.cost(type)) {
-      return false;
-    }
-    const tile = this.structureSpawnTile(type);
-    if (tile === null) {
-      return false;
-    }
-    const canBuild = this.player.canBuild(type, tile);
-    if (canBuild === false) {
-      return false;
-    }
-    this.mg.addExecution(new ConstructionExecution(this.player, tile, type));
-    return true;
-  }
-
-  private structureSpawnTile(type: UnitType): TileRef | null {
-    if (this.player === null) throw new Error("not initialized");
-    const tiles =
-      type === UnitType.Port
-        ? Array.from(this.player.borderTiles()).filter((t) =>
-            this.mg.isOceanShore(t),
-          )
-        : Array.from(this.player.tiles());
-    if (tiles.length === 0) return null;
-    return this.random.randElement(tiles);
-  }
-
-  private maybeSpawnWarship(): boolean {
-    if (this.player === null) throw new Error("not initialized");
-    if (!this.random.chance(50)) {
-      return false;
-    }
-    const ports = this.player.units(UnitType.Port);
-    const ships = this.player.units(UnitType.Warship);
-    if (
-      ports.length > 0 &&
-      ships.length === 0 &&
-      this.player.gold() > this.cost(UnitType.Warship)
-    ) {
-      const port = this.random.randElement(ports);
-      const targetTile = this.warshipSpawnTile(port.tile());
-      if (targetTile === null) {
-        return false;
-      }
-      const canBuild = this.player.canBuild(UnitType.Warship, targetTile);
-      if (canBuild === false) {
-        console.warn("cannot spawn destroyer");
-        return false;
-      }
-      this.mg.addExecution(
-        new ConstructionExecution(this.player, targetTile, UnitType.Warship),
-      );
-      return true;
-    }
-    return false;
-  }
-
-  private randTerritoryTile(p: Player): TileRef | null {
-    const boundingBox = calculateBoundingBox(this.mg, p.borderTiles());
-    for (let i = 0; i < 100; i++) {
-      const randX = this.random.nextInt(boundingBox.min.x, boundingBox.max.x);
-      const randY = this.random.nextInt(boundingBox.min.y, boundingBox.max.y);
-      if (!this.mg.isOnMap(new Cell(randX, randY))) {
-        // Sanity check should never happen
-        continue;
-      }
-      const randTile = this.mg.ref(randX, randY);
-      if (this.mg.owner(randTile) === p) {
-        return randTile;
-      }
-    }
-    return null;
-  }
-
-  private warshipSpawnTile(portTile: TileRef): TileRef | null {
-    const radius = 250;
-    for (let attempts = 0; attempts < 50; attempts++) {
-      const randX = this.random.nextInt(
-        this.mg.x(portTile) - radius,
-        this.mg.x(portTile) + radius,
-      );
-      const randY = this.random.nextInt(
-        this.mg.y(portTile) - radius,
-        this.mg.y(portTile) + radius,
-      );
-      if (!this.mg.isValidCoord(randX, randY)) {
-        continue;
-      }
-      const tile = this.mg.ref(randX, randY);
-      // Sanity check
-      if (!this.mg.isOcean(tile)) {
-        continue;
-      }
-      return tile;
-    }
-    return null;
-  }
-
-  private cost(type: UnitType): Gold {
-    if (this.player === null) throw new Error("not initialized");
-    return this.mg.unitInfo(type).cost(this.player);
   }
 
   sendBoatRandomly() {
@@ -643,5 +426,61 @@ export class FakeHumanExecution implements Execution {
 
   activeDuringSpawnPhase(): boolean {
     return true;
+  }
+
+  private handleTN() {
+    if (this.player === null || this.behavior === null)
+      throw new Error("not initialized");
+
+    const tn = this.mg.terraNullius();
+    if (!tn) return;
+
+    /* ---------- 1. land-border check (unchanged) ---------- */
+    const bordersTN = Array.from(this.player.borderTiles()).some((tile) =>
+      this.mg
+        .neighbors(tile)
+        .some((n) => this.mg.isLand(n) && this.mg.ownerID(n) === tn.smallID()),
+    );
+
+    if (bordersTN) {
+      this.behavior.sendAttack(tn);
+      return;
+    }
+
+    /* ---------- 2. boat attack: sample a few shore tiles only ---------- */
+
+    // Use the same expanding radius as BotBehavior (defaults to 100)
+    const radius = this.behavior.enemySearchRadius ?? 100;
+
+    const shoreSample = this.random.sampleArray(
+      Array.from(this.player.borderTiles()).filter((t) =>
+        this.mg.isOceanShore(t),
+      ),
+      10, // check at most 10 shore tiles
+    );
+
+    for (const tile of shoreSample) {
+      const dst = this.randOceanShoreTile(tile, radius);
+      if (dst && this.mg.ownerID(dst) === tn.smallID()) {
+        this.mg.addExecution(
+          new TransportShipExecution(
+            this.player,
+            null, // Terra Nullius
+            dst,
+            this.player.troops() / 10,
+            null,
+          ),
+        );
+        return;
+      }
+    }
+  }
+  private isTooCloseToExistingBoat(dst: TileRef): boolean {
+    for (const prev of this.boatDestinations) {
+      const dx = this.mg.x(dst) - this.mg.x(prev);
+      const dy = this.mg.y(dst) - this.mg.y(prev);
+      if (dx * dx + dy * dy <= 100 * 100) return true;
+    }
+    return false;
   }
 }

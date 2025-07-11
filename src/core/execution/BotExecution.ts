@@ -51,21 +51,12 @@ export class BotExecution implements Execution {
       );
     }
 
-    this.behavior.handleAllianceRequests();
     this.maybeAttack();
   }
 
   private maybeAttack() {
     if (this.behavior === null) {
       throw new Error("not initialized");
-    }
-    const toAttack = this.behavior.getNeighborTraitorToAttack();
-    if (toAttack !== null) {
-      const odds = this.bot.isFriendly(toAttack) ? 6 : 3;
-      if (this.random.chance(odds)) {
-        this.behavior.sendAttack(toAttack);
-        return;
-      }
     }
 
     if (this.neighborsTerraNullius) {
@@ -76,11 +67,14 @@ export class BotExecution implements Execution {
       this.neighborsTerraNullius = false;
     }
 
-    this.behavior.forgetOldEnemies();
-    const enemy = this.behavior.selectRandomEnemy();
-    if (!enemy) return;
-    if (!this.bot.sharesBorderWith(enemy)) return;
-    this.behavior.sendAttack(enemy);
+    const neighbors = this.bot
+      .neighbors()
+      .filter((n): n is Player => n.isPlayer());
+
+    if (neighbors.length > 0) {
+      const target = this.random.randElement(neighbors);
+      this.behavior.sendAttack(target);
+    }
   }
 
   isActive(): boolean {

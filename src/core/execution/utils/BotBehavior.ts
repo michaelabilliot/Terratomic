@@ -15,6 +15,7 @@ import { EmojiExecution } from "../EmojiExecution";
 export class BotBehavior {
   private enemy: Player | null = null;
   private enemyUpdated: Tick;
+  public enemySearchRadius = 100;
 
   private assistAcceptEmoji = flattenedEmojiTable.indexOf("👍");
 
@@ -44,6 +45,7 @@ export class BotBehavior {
   }
 
   private setNewEnemy(newEnemy: Player | null) {
+    this.enemySearchRadius = 100;
     this.enemy = newEnemy;
     this.enemyUpdated = this.game.ticks();
   }
@@ -54,7 +56,7 @@ export class BotBehavior {
 
   forgetOldEnemies() {
     // Forget old enemies
-    if (this.game.ticks() - this.enemyUpdated > 100) {
+    if (this.game.ticks() - this.enemyUpdated > 200) {
       this.clearEnemy();
     }
   }
@@ -113,90 +115,88 @@ export class BotBehavior {
   }
 
   selectEnemy(): Player | null {
-    if (this.enemy === null) {
-      // Save up troops until we reach the trigger ratio
-      if (!this.hasSufficientTroops()) return null;
+    if (this.enemy !== null) return this.enemySanityCheck();
+    if (!this.hasSufficientTroops()) return null;
 
-      // Prefer neighboring bots
-      const bots = this.player
-        .neighbors()
-        .filter(
-          (n): n is Player => n.isPlayer() && n.type() === PlayerType.Bot,
-        );
-      if (bots.length > 0) {
-        const density = (p: Player) => p.troops() / p.numTilesOwned();
-        let lowestDensityBot: Player | undefined;
-        let lowestDensity = Infinity;
+    /* ---------- 1. lowest-density neighbouring bot (unchanged) ---------- */
+    const bots = this.player
+      .neighbors()
+      .filter((n): n is Player => n.isPlayer() && n.type() === PlayerType.Bot);
 
-        for (const bot of bots) {
-          const currentDensity = density(bot);
-          if (currentDensity < lowestDensity) {
-            lowestDensity = currentDensity;
-            lowestDensityBot = bot;
-          }
-        }
-
-        if (lowestDensityBot !== undefined) {
-          this.setNewEnemy(lowestDensityBot);
+    if (bots.length) {
+      const density = (p: Player) => p.troops() / p.numTilesOwned();
+      let best: Player | null = null;
+      let bestD = Infinity;
+      for (const b of bots) {
+        const d = density(b);
+        if (d < bestD) {
+          bestD = d;
+          best = b;
         }
       }
-
-      // Retaliate against incoming attacks
-      if (this.enemy === null) {
-        this.checkIncomingAttacks();
-      }
-
-      // Select the most hated player
-      if (this.enemy === null) {
-        const mostHated = this.player.allRelationsSorted()[0];
-        if (
-          mostHated !== undefined &&
-          mostHated.relation === Relation.Hostile
-        ) {
-          this.setNewEnemy(mostHated.player);
-        }
+      if (best) {
+        this.setNewEnemy(best);
+        return this.enemySanityCheck();
       }
     }
 
-    // Sanity check, don't attack our allies or teammates
-    return this.enemySanityCheck();
-  }
+    /* ---------- 2. retaliation if attacked (unchanged) ---------- */
+    this.checkIncomingAttacks();
+    if (this.enemy) return this.enemySanityCheck();
 
-  selectRandomEnemy(): Player | TerraNullius | null {
-    if (this.enemy === null) {
-      // Save up troops until we reach the trigger ratio
-      if (!this.hasSufficientTroops()) return null;
+    /* ---------- 3. weakest nearby player, using *sampled* border tiles ---------- */
+    const ourBordersAll = Array.from(this.player.borderTiles());
+    const ourBordersSample = this.random.sampleArray(ourBordersAll, 10); // ≤10 tiles
+    const radSq = this.enemySearchRadius * this.enemySearchRadius;
 
-      // Choose a new enemy randomly
-      const neighbors = this.player.neighbors();
-      for (const neighbor of this.random.shuffleArray(neighbors)) {
-        if (!neighbor.isPlayer()) continue;
-        if (this.player.isFriendly(neighbor)) continue;
-        if (neighbor.type() === PlayerType.FakeHuman) {
-          if (this.random.chance(2)) {
-            continue;
-          }
+    let weakest: Player | null = null;
+    let weakestTroops = Infinity;
+
+    for (const p of this.game.players()) {
+      if (!p.isPlayer() || p === this.player || this.player.isFriendly(p))
+        continue;
+
+      // Direct neighbour counts immediately
+      if (this.player.neighbors().includes(p)) {
+        if (p.troops() < weakestTroops) {
+          weakest = p;
+          weakestTroops = p.troops();
         }
-        this.setNewEnemy(neighbor);
+        continue;
       }
 
-      // Retaliate against incoming attacks
-      if (this.enemy === null) {
-        this.checkIncomingAttacks();
-      }
+      // Sample up to 10 of their border tiles
+      const theirBorders = this.random.sampleArray(
+        Array.from(p.borderTiles()),
+        10,
+      );
+      if (!theirBorders.length) continue;
 
-      // Select a traitor as an enemy
-      if (this.enemy === null) {
-        const toAttack = this.getNeighborTraitorToAttack();
-        if (toAttack !== null) {
-          if (!this.player.isFriendly(toAttack) && this.random.chance(3)) {
-            this.setNewEnemy(toAttack);
+      // Cheap nested loop: ≤100 distance checks per player
+      let closeEnough = false;
+      outer: for (const tb of theirBorders) {
+        for (const ob of ourBordersSample) {
+          const dx = this.game.x(ob) - this.game.x(tb);
+          const dy = this.game.y(ob) - this.game.y(tb);
+          if (dx * dx + dy * dy <= radSq) {
+            closeEnough = true;
+            break outer;
           }
         }
+      }
+
+      if (closeEnough && p.troops() < weakestTroops) {
+        weakest = p;
+        weakestTroops = p.troops();
       }
     }
 
-    // Sanity check, don't attack our allies or teammates
+    if (weakest) {
+      this.setNewEnemy(weakest); // resets radius to 100
+    } else {
+      this.enemySearchRadius += 50; // widen search next tick
+    }
+
     return this.enemySanityCheck();
   }
 

@@ -133,4 +133,10 @@ export class PseudoRandom {
     }
     return result;
   }
+  /** Return ≤ count random elements from arr (does not mutate arr). */
+  sampleArray<T>(arr: T[], count: number): T[] {
+    if (arr.length <= count) return arr;
+    const copy = this.shuffleArray(arr); // uses your existing Fisher-Yates
+    return copy.slice(0, count);
+  }
 }
