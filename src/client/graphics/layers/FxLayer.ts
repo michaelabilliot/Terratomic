@@ -50,7 +50,9 @@ export class FxLayer implements Layer {
           this.game,
           0.2,
         );
-        this.allFx = this.allFx.concat(bomberFx);
+        for (const fx of bomberFx) {
+          this.allFx.push(fx);
+        }
       });
   }
 
@@ -133,7 +135,9 @@ export class FxLayer implements Layer {
       radius,
       this.game,
     );
-    this.allFx = this.allFx.concat(nukeFx);
+    for (const fx of nukeFx) {
+      this.allFx.push(fx);
+    }
   }
 
   handleSAMInterception(unit: UnitView) {
@@ -196,9 +200,14 @@ export class FxLayer implements Layer {
   }
 
   renderContextFx(duration: number) {
-    for (let i = this.allFx.length - 1; i >= 0; i--) {
-      if (!this.allFx[i].renderTick(duration, this.context)) {
-        this.allFx.splice(i, 1);
+    for (let i = 0; i < this.allFx.length; ) {
+      const fx = this.allFx[i];
+      if (!fx.renderTick(duration, this.context)) {
+        const last = this.allFx.length - 1;
+        if (i !== last) this.allFx[i] = this.allFx[last];
+        this.allFx.pop();
+      } else {
+        i++;
       }
     }
   }
