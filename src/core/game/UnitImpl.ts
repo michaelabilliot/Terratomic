@@ -181,8 +181,10 @@ export class UnitImpl implements Unit {
         break;
     }
     this._lastOwner = this._owner;
+    this._lastOwner.invalidateEffectiveUnitsCache(this.type());
     this._lastOwner._units = this._lastOwner._units.filter((u) => u !== this);
     this._owner = newOwner;
+    this._owner.invalidateEffectiveUnitsCache(this.type());
     this._owner._units.push(this);
     this.mg.addUpdate(this.toUpdate());
     this.mg.displayMessage(
