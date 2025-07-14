@@ -53,6 +53,7 @@ export class StructureLayer implements Layer {
   private theme: Theme;
   private selectedStructureUnit: UnitView | null = null;
   private previouslySelected: UnitView | null = null;
+  private readonly borderCache: Map<string, any[]> = new Map();
 
   // Configuration for supported unit types only
   private readonly unitConfigs: Partial<Record<UnitType, UnitRenderConfig>> = {
@@ -165,6 +166,29 @@ export class StructureLayer implements Layer {
       this.loadIcon(unitType, config);
     });
   }
+  /**
+   * Returns a sorted array of tiles at `radius` distance from `unit`.
+   * The list is computed once and then reused from `borderCache`.
+   */
+  private getCachedTiles(
+    unit: UnitView,
+    distFn: DistanceFunction,
+    radius: number,
+  ): any[] {
+    const tile = unit.tile(); // <- get its map position
+    const key = `${this.game.x(tile)}-${this.game.y(tile)}-${radius}-${distFn.name}`;
+
+    let tiles = this.borderCache.get(key);
+    if (!tiles) {
+      tiles = Array.from(
+        this.game.bfs(unit.tile(), distFn(unit.tile(), radius, true)),
+      );
+      // sort once so drawBorder can do its bottom-up fill
+      tiles.sort((a, b) => this.game.y(a) - this.game.y(b));
+      this.borderCache.set(key, tiles);
+    }
+    return tiles;
+  }
 
   shouldTransform(): boolean {
     return true;
@@ -217,11 +241,10 @@ export class StructureLayer implements Layer {
     distanceFN: DistanceFunction,
     healthPercentage: number,
   ) {
-    const borderTiles = Array.from(
-      this.game.bfs(
-        unit.tile(),
-        distanceFN(unit.tile(), config.borderRadius, true),
-      ),
+    const borderTiles = this.getCachedTiles(
+      unit,
+      distanceFN,
+      config.borderRadius,
     );
 
     // Sort tiles by Y-coordinate to simulate a bottom-up fill
@@ -229,31 +252,36 @@ export class StructureLayer implements Layer {
 
     const healthyTileCount = Math.floor(borderTiles.length * healthPercentage);
 
+    const healthyCells: Cell[] = [];
+    const damagedCells: Cell[] = [];
+
     for (let i = 0; i < borderTiles.length; i++) {
       const tile = borderTiles[i];
       const cell = new Cell(this.game.x(tile), this.game.y(tile));
 
       if (i >= borderTiles.length - healthyTileCount) {
-        // This is the healthy part of the border
-        this.paintCell(cell, borderColor, 255);
+        healthyCells.push(cell);
       } else {
-        // This is the unhealthy part of the border
-        this.paintCell(cell, colord({ r: 128, g: 128, b: 128 }), 255);
+        damagedCells.push(cell);
       }
     }
 
-    for (const tile of this.game.bfs(
-      unit.tile(),
-      distanceFN(unit.tile(), config.territoryRadius, true),
-    )) {
-      this.paintCell(
-        new Cell(this.game.x(tile), this.game.y(tile)),
-        unit.type() === UnitType.Construction
-          ? underConstructionColor
-          : this.theme.territoryColor(unit.owner()),
-        130,
-      );
-    }
+    this.paintCells(healthyCells, borderColor, 255);
+    this.paintCells(damagedCells, colord({ r: 128, g: 128, b: 128 }), 255);
+
+    const territoryCells = this.getCachedTiles(
+      unit,
+      distanceFN,
+      config.territoryRadius,
+    ).map((tile) => new Cell(this.game.x(tile), this.game.y(tile)));
+
+    this.paintCells(
+      territoryCells,
+      unit.type() === UnitType.Construction
+        ? underConstructionColor
+        : this.theme.territoryColor(unit.owner()),
+      130,
+    );
   }
 
   private getDrawFN(type: UnitBorderType) {
@@ -293,9 +321,10 @@ export class StructureLayer implements Layer {
 
     const drawFunction = this.getDrawFN(config.borderType);
     // Clear previous rendering
-    for (const tile of this.game.bfs(
-      unit.tile(),
-      drawFunction(unit.tile(), config.borderRadius, true),
+    for (const tile of this.getCachedTiles(
+      unit,
+      drawFunction,
+      config.borderRadius,
     )) {
       this.clearCell(new Cell(this.game.x(tile), this.game.y(tile)));
     }
@@ -396,6 +425,15 @@ export class StructureLayer implements Layer {
 
   clearCell(cell: Cell) {
     this.context.clearRect(cell.x, cell.y, 1, 1);
+  }
+  private paintCells(cells: Cell[], color: Colord, alpha: number) {
+    const path = new Path2D();
+    for (const cell of cells) {
+      this.clearCell(cell);
+      path.rect(cell.x, cell.y, 1, 1);
+    }
+    this.context.fillStyle = color.alpha(alpha / 255).toRgbString();
+    this.context.fill(path);
   }
 
   private findStructureUnitAtCell(
