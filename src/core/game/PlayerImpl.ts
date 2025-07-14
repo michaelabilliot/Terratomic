@@ -1230,10 +1230,7 @@ export class PlayerImpl implements Player {
       // Make close ports twice more likely by putting them again
       for (
         let i = 0;
-        i <
-        this.mg
-          .config()
-          .proximityBonusPortsNb(this.effectiveUnits(UnitType.Port));
+        i < this.mg.config().proximityBonusPortsNb(ports.length);
         i++
       ) {
         ports.push(ports[i]);
@@ -1266,12 +1263,7 @@ export class PlayerImpl implements Player {
     if (airfields.length > 0) {
       for (
         let i = 0;
-        i <
-        this.mg
-          .config()
-          .proximityBonusAirfieldsNumber(
-            this.effectiveUnits(UnitType.Airfield),
-          );
+        i < this.mg.config().proximityBonusAirfieldsNumber(airfields.length);
         i++
       ) {
         airfields.push(airfields[i]);
