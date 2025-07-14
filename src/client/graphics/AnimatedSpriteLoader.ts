@@ -144,7 +144,10 @@ export class AnimatedSpriteLoader {
     );
   }
 
-  private createRegularAnimatedSprite(fxType: FxType): AnimatedSprite | null {
+  private createRegularAnimatedSprite(
+    fxType: FxType,
+    scale: number = 1,
+  ): AnimatedSprite | null {
     const config = ANIMATED_SPRITE_CONFIG[fxType];
     const image = this.animatedSpriteImageMap.get(fxType);
     if (!config || !image) return null;
@@ -157,6 +160,7 @@ export class AnimatedSpriteLoader {
       config.looping ?? true,
       config.originX,
       config.originY,
+      scale,
     );
   }
 
@@ -192,6 +196,7 @@ export class AnimatedSpriteLoader {
     fxType: FxType,
     owner: PlayerView,
     theme: Theme,
+    scale: number = 1,
   ): AnimatedSprite | null {
     const config = ANIMATED_SPRITE_CONFIG[fxType];
     const image = this.getColoredAnimatedSprite(owner, fxType, theme);
@@ -205,6 +210,7 @@ export class AnimatedSpriteLoader {
       config.looping ?? true,
       config.originX,
       config.originY,
+      scale,
     );
   }
 
@@ -212,10 +218,16 @@ export class AnimatedSpriteLoader {
     fxType: FxType,
     owner?: PlayerView,
     theme?: Theme,
+    scale: number = 1,
   ): AnimatedSprite | null {
     if (owner && theme) {
-      return this.createColoredAnimatedSpriteForUnit(fxType, owner, theme);
+      return this.createColoredAnimatedSpriteForUnit(
+        fxType,
+        owner,
+        theme,
+        scale,
+      );
     }
-    return this.createRegularAnimatedSprite(fxType);
+    return this.createRegularAnimatedSprite(fxType, scale);
   }
 }

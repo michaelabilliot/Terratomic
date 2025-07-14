@@ -3,6 +3,7 @@ export class AnimatedSprite {
   private currentFrame: number = 0;
   private elapsedTime: number = 0;
   private active: boolean = true;
+  private scale: number;
 
   constructor(
     private image: CanvasImageSource,
@@ -12,7 +13,9 @@ export class AnimatedSprite {
     private looping: boolean = false,
     private originX: number,
     private originY: number,
+    scale: number = 1,
   ) {
+    this.scale = scale;
     if ("height" in image) {
       this.frameHeight = (image as HTMLImageElement | HTMLCanvasElement).height;
     } else {
@@ -50,8 +53,8 @@ export class AnimatedSprite {
   }
 
   draw(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    const drawX = x - this.originX;
-    const drawY = y - this.originY;
+    const drawX = x - this.originX * this.scale;
+    const drawY = y - this.originY * this.scale;
 
     ctx.drawImage(
       this.image,
@@ -61,8 +64,8 @@ export class AnimatedSprite {
       this.frameHeight,
       drawX,
       drawY,
-      this.frameWidth,
-      this.frameHeight,
+      this.frameWidth * this.scale,
+      this.frameHeight * this.scale,
     );
   }
 

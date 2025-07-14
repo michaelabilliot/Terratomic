@@ -37,6 +37,21 @@ export class FxLayer implements Layer {
         if (unitView === undefined) return;
         this.onUnitEvent(unitView);
       });
+
+    this.game
+      .updatesSinceLastTick()
+      ?.[GameUpdateType.BomberExplosion]?.forEach((update) => {
+        const { x, y, radius } = update;
+        const bomberFx = nukeFxFactory(
+          this.animatedSpriteLoader,
+          x,
+          y,
+          radius,
+          this.game,
+          0.2,
+        );
+        this.allFx = this.allFx.concat(bomberFx);
+      });
   }
 
   onUnitEvent(unit: UnitView) {

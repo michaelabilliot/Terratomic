@@ -43,6 +43,7 @@ function addSpriteInCircle(
   type: FxType,
   result: Fx[],
   game: GameView,
+  scale: number = 1,
 ) {
   const count = Math.max(0, Math.floor(num));
   for (let i = 0; i < count; i++) {
@@ -55,7 +56,16 @@ function addSpriteInCircle(
       game.isLand(game.ref(spawnX, spawnY))
     ) {
       const sprite = new FadeFx(
-        new SpriteFx(animatedSpriteLoader, spawnX, spawnY, type, 6000),
+        new SpriteFx(
+          animatedSpriteLoader,
+          spawnX,
+          spawnY,
+          type,
+          6000,
+          undefined,
+          undefined,
+          scale,
+        ),
         0.1,
         0.8,
       );
@@ -76,10 +86,22 @@ export function nukeFxFactory(
   y: number,
   radius: number,
   game: GameView,
+  scale: number = 1,
 ): Fx[] {
   const nukeFx: Fx[] = [];
   // Explosion animation
-  nukeFx.push(new SpriteFx(animatedSpriteLoader, x, y, FxType.Nuke));
+  nukeFx.push(
+    new SpriteFx(
+      animatedSpriteLoader,
+      x,
+      y,
+      FxType.Nuke,
+      undefined,
+      undefined,
+      undefined,
+      scale,
+    ),
+  );
   // Shockwave animation
   nukeFx.push(new ShockwaveFx(x, y, 1500, radius * 1.5));
   // Ruins and desolation sprites
@@ -104,6 +126,7 @@ export function nukeFxFactory(
       type,
       nukeFx,
       game,
+      scale,
     );
   }
   return nukeFx;

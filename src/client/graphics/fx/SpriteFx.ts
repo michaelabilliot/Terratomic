@@ -54,11 +54,13 @@ export class SpriteFx implements Fx {
     duration?: number,
     private owner?: PlayerView,
     private theme?: Theme,
+    scale: number = 1,
   ) {
     this.animatedSprite = animatedSpriteLoader.createAnimatedSprite(
       fxType,
       owner,
       theme,
+      scale,
     );
     if (!this.animatedSprite) {
       console.error("Could not load animated sprite", fxType);

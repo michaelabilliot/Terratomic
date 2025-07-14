@@ -9,3 +9,5 @@ resources/.DS_Store
 .env*
 .DS_Store
 gitupdate.sh
+errors.txt
+Project_Info.md

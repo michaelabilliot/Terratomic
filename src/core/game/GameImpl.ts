@@ -606,6 +606,12 @@ export class GameImpl implements Game {
         }
       }
     });
+    this.addUpdate({
+      type: GameUpdateType.BomberExplosion,
+      x: this.x(tile),
+      y: this.y(tile),
+      radius: radius,
+    });
   }
 
   sendEmojiUpdate(msg: EmojiMessage): void {

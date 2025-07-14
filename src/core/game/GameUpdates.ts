@@ -43,6 +43,7 @@ export enum GameUpdateType {
   UnitIncoming,
   AllianceExtensionPrompt,
   AllianceExtensionAccepted,
+  BomberExplosion,
 }
 
 export type GameUpdate =
@@ -60,7 +61,15 @@ export type GameUpdate =
   | EmojiUpdate
   | WinUpdate
   | HashUpdate
-  | UnitIncomingUpdate;
+  | UnitIncomingUpdate
+  | BomberExplosionUpdate;
+
+export interface BomberExplosionUpdate {
+  type: GameUpdateType.BomberExplosion;
+  x: number;
+  y: number;
+  radius: number;
+}
 
 export interface TileUpdateWrapper {
   type: GameUpdateType.Tile;
