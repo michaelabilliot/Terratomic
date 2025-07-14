@@ -644,15 +644,23 @@ export class DefaultConfig implements Config {
     const defenderType = defenderIsPlayer ? defender.type() : null;
 
     if (defenderIsPlayer) {
+      let maxDefensePostHealthRatio = 0;
       for (const dp of gm.nearbyUnits(
         tileToConquer,
         gm.config().defensePostRange(),
         UnitType.DefensePost,
         ({ unit }) => unit.owner() === defender,
       )) {
-        mag *= this.defensePostLossMultiplier();
-        speed *= this.defensePostSpeedMultiplier();
-        break;
+        const ratio = dp.unit.hasHealth()
+          ? Number(dp.unit.health()) / (dp.unit.info().maxHealth ?? 1)
+          : 1;
+        if (ratio > maxDefensePostHealthRatio) {
+          maxDefensePostHealthRatio = ratio;
+        }
+      }
+      if (maxDefensePostHealthRatio > 0) {
+        mag *= this.defensePostLossMultiplier() * maxDefensePostHealthRatio;
+        speed /= this.defensePostSpeedMultiplier() * maxDefensePostHealthRatio;
       }
     }
 
@@ -686,9 +694,9 @@ export class DefaultConfig implements Config {
       const baseTroopLoss = 10;
       const attackLossModifier = 1.35;
       const academyAttackModifier =
-        1.2 - 0.2 * 0.5 ** defender.units(UnitType.Academy).length;
+        1.2 - 0.2 * 0.5 ** defender.effectiveUnits(UnitType.Academy);
       const academyDefenseModifier =
-        1.2 - 0.2 * 0.5 ** attacker.units(UnitType.Academy).length;
+        1.2 - 0.2 * 0.5 ** attacker.effectiveUnits(UnitType.Academy);
       const baseTileCost = 45;
       const attackStandardSize = 10_000;
       return {
@@ -779,7 +787,7 @@ export class DefaultConfig implements Config {
       player.type() === PlayerType.Human && this.infiniteTroops()
         ? 1_000_000_000
         : 1 * (player.numTilesOwned() * 30 + 50000) +
-          player.units(UnitType.City).length * this.cityPopulationIncrease();
+          player.effectiveUnits(UnitType.City) * this.cityPopulationIncrease();
 
     if (player.type() === PlayerType.Bot) {
       return maxPop / 2;
