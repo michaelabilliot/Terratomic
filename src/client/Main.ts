@@ -248,10 +248,11 @@ class Client {
       }
 
       const modal = document.querySelector("news-modal") as NewsModal;
-      if (modal) modal.open();
+      if (modal)
+        //modal.open();
 
-      // Attempt to join lobby
-      this.handleHash();
+        // Attempt to join lobby
+        this.handleHash();
     };
 
     // Handle browser navigation & manual hash edits
@@ -271,7 +272,7 @@ class Client {
         slider.addEventListener("input", () => updateSliderProgress(slider));
       });
     if (newsModal) {
-      newsModal.open();
+      //newsModal.open();
     }
   }
 
