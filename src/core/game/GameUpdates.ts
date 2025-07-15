@@ -128,6 +128,7 @@ export interface PlayerUpdate {
   productivityGrowthPerMinute: number;
   investmentRate: number;
   troops: number;
+  attackingTroops: number;
   targetTroopRatio: number;
   allies: number[];
   embargoes: Set<PlayerID>;

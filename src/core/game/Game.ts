@@ -425,7 +425,6 @@ export interface Unit {
   // Troops
   setTroops(troops: number): void;
   troops(): number;
-
   // --- UNIT SPECIFIC ---
 
   // SAMs & Missile Silos
@@ -497,6 +496,7 @@ export interface Player {
   totalPopulation(): number;
   workers(): number;
   troops(): number;
+  attackingTroops(): number;
   targetTroopRatio(): number;
   productivity(): number; // Returns the productivity rate based on investment rate
   updateProductivity(): void;

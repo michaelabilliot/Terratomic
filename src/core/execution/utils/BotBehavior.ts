@@ -50,7 +50,7 @@ export class BotBehavior {
     this.enemyUpdated = this.game.ticks();
   }
 
-  private clearEnemy() {
+  public clearEnemy() {
     this.enemy = null;
   }
 
@@ -80,13 +80,6 @@ export class BotBehavior {
     if (largestAttacker !== undefined) {
       this.setNewEnemy(largestAttacker);
     }
-  }
-
-  getNeighborTraitorToAttack(): Player | null {
-    const traitors = this.player
-      .neighbors()
-      .filter((n): n is Player => n.isPlayer() && n.isTraitor());
-    return traitors.length > 0 ? this.random.randElement(traitors) : null;
   }
 
   assistAllies() {
@@ -214,9 +207,12 @@ export class BotBehavior {
     const targetTroops = maxTroops * this.reserveRatio;
     // Don't wait until it has sufficient reserves to send the first attack
     // to prevent the bot from waiting too long at the start of the game.
-    const troops = this.firstAttackSent
+    let troops = this.firstAttackSent
       ? this.player.troops() - targetTroops
       : this.player.troops() / 5;
+    if (target.isPlayer()) {
+      troops = Math.min(troops, target.troops() * 3);
+    }
     if (troops < 1) return;
     this.firstAttackSent = true;
     this.game.addExecution(

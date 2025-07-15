@@ -1,5 +1,4 @@
 import {
-  Difficulty,
   Execution,
   Game,
   Nation,
@@ -35,6 +34,7 @@ export class FakeHumanExecution implements Execution {
 
   private attackRate: number;
   private attackTick: number;
+  private diplomacyTick: number;
   private triggerRatio: number;
   private reserveRatio: number;
 
@@ -53,18 +53,16 @@ export class FakeHumanExecution implements Execution {
     this.random = new PseudoRandom(
       simpleHash(nation.playerInfo.id) + simpleHash(gameID),
     );
-    this.attackRate = this.random.nextInt(40, 80);
+    this.attackRate = 40;
     this.attackTick = this.random.nextInt(0, this.attackRate);
-    this.triggerRatio = this.random.nextInt(70, 90) / 100;
-    this.reserveRatio = this.random.nextInt(50, 60) / 100;
+    this.diplomacyTick = this.random.nextInt(0, 10);
+    this.triggerRatio = 70 / 100;
+    this.reserveRatio = 50 / 100;
     this.heckleEmoji = ["🤡", "😡"].map((e) => flattenedEmojiTable.indexOf(e));
   }
 
   init(mg: Game) {
     this.mg = mg;
-    if (this.random.chance(10)) {
-      // this.isTraitor = true
-    }
   }
 
   private updateRelationsFromEmbargos() {
@@ -112,15 +110,15 @@ export class FakeHumanExecution implements Execution {
   }
 
   tick(ticks: number) {
-    if (ticks % this.attackRate !== this.attackTick) return;
-
     if (this.mg.inSpawnPhase()) {
-      const rl = this.randomLand();
-      if (rl === null) {
-        console.warn(`cannot spawn ${this.nation.playerInfo.name}`);
-        return;
+      if (ticks % this.attackRate === this.attackTick) {
+        const rl = this.randomLand();
+        if (rl === null) {
+          console.warn(`cannot spawn ${this.nation.playerInfo.name}`);
+        } else {
+          this.mg.addExecution(new SpawnExecution(this.nation.playerInfo, rl));
+        }
       }
-      this.mg.addExecution(new SpawnExecution(this.nation.playerInfo, rl));
       return;
     }
 
@@ -171,113 +169,34 @@ export class FakeHumanExecution implements Execution {
       return;
     }
 
-    if (
-      this.player.troops() > 100_000 &&
-      this.player.targetTroopRatio() > 0.7
-    ) {
-      this.player.setTargetTroopRatio(0.7);
-    }
-
-    if (!this.hasSetInvestmentRate) {
-      this.player.setInvestmentRate(0.1);
-      this.hasSetInvestmentRate = true;
-    }
-
-    this.updateRelationsFromEmbargos();
-    this.behavior.handleAllianceRequests();
-    this.unitCreationHelper.handleUnits();
-    this.handleEmbargoesToHostileNations();
-    this.handleTN();
-    this.handleEnemies();
-    //this.maybeAttack();
-  }
-
-  private maybeAttack() {
-    if (this.player === null || this.behavior === null) {
-      throw new Error("not initialized");
-    }
-    const enemyborder = Array.from(this.player.borderTiles())
-      .flatMap((t) => this.mg.neighbors(t))
-      .filter(
-        (t) =>
-          this.mg.isLand(t) && this.mg.ownerID(t) !== this.player?.smallID(),
-      );
-
-    if (enemyborder.length === 0) {
-      if (this.random.chance(10)) {
-        this.sendBoatRandomly();
+    if (ticks % 100 === this.diplomacyTick) {
+      if (
+        this.player.troops() > 100_000 &&
+        this.player.targetTroopRatio() > 0.6
+      ) {
+        this.player.setTargetTroopRatio(0.6);
       }
-      return;
-    }
-    if (this.random.chance(20)) {
-      this.sendBoatRandomly();
-      return;
-    }
 
-    const enemiesWithTN = enemyborder.map((t) =>
-      this.mg.playerBySmallID(this.mg.ownerID(t)),
-    );
-    if (enemiesWithTN.filter((o) => !o.isPlayer()).length > 0) {
-      this.behavior.sendAttack(this.mg.terraNullius());
-      return;
+      if (!this.hasSetInvestmentRate) {
+        this.player.setInvestmentRate(0.1);
+        this.hasSetInvestmentRate = true;
+      }
+
+      this.updateRelationsFromEmbargos();
+      this.behavior.handleAllianceRequests();
+      this.unitCreationHelper.handleUnits();
+      this.handleEmbargoesToHostileNations();
     }
 
-    const enemies = enemiesWithTN
-      .filter((o) => o.isPlayer())
-      .sort((a, b) => a.troops() - b.troops());
-
-    // 5% chance to send a random alliance request
-    if (this.random.chance(20)) {
-      const toAlly = this.random.randElement(enemies);
-      if (this.player.canSendAllianceRequest(toAlly)) {
-        this.player.createAllianceRequest(toAlly);
-        return;
+    if (ticks % this.attackRate === this.attackTick) {
+      const attackedTN = this.handleTN();
+      if (!attackedTN) {
+        this.handleEnemies();
       }
     }
-
-    // 50-50 attack weakest player vs random player
-    const toAttack = this.random.chance(2)
-      ? enemies[0]
-      : this.random.randElement(enemies);
-    if (this.shouldAttack(toAttack)) {
-      this.behavior.sendAttack(toAttack);
+    if (ticks % 10 === this.attackTick % 10) {
+      this.checkOverwhelm();
     }
-  }
-
-  private shouldAttack(other: Player): boolean {
-    if (this.player === null) throw new Error("not initialized");
-    if (this.player.isOnSameTeam(other)) {
-      return false;
-    }
-    if (this.player.isFriendly(other)) {
-      if (this.shouldDiscourageAttack(other)) {
-        return this.random.chance(200);
-      }
-      return this.random.chance(50);
-    } else {
-      if (this.shouldDiscourageAttack(other)) {
-        return this.random.chance(4);
-      }
-      return true;
-    }
-  }
-
-  private shouldDiscourageAttack(other: Player) {
-    if (other.isTraitor()) {
-      return false;
-    }
-    const difficulty = this.mg.config().gameConfig().difficulty;
-    if (
-      difficulty === Difficulty.Hard ||
-      difficulty === Difficulty.Impossible
-    ) {
-      return false;
-    }
-    if (other.type() !== PlayerType.Human) {
-      return false;
-    }
-    // Only discourage attacks on Humans who are not traitors on easy or medium difficulty.
-    return true;
   }
 
   handleEnemies() {
@@ -342,34 +261,6 @@ export class FakeHumanExecution implements Execution {
     );
   }
 
-  sendBoatRandomly() {
-    if (this.player === null) throw new Error("not initialized");
-    const oceanShore = Array.from(this.player.borderTiles()).filter((t) =>
-      this.mg.isOceanShore(t),
-    );
-    if (oceanShore.length === 0) {
-      return;
-    }
-
-    const src = this.random.randElement(oceanShore);
-
-    const dst = this.randOceanShoreTile(src, 150);
-    if (dst === null) {
-      return;
-    }
-
-    this.mg.addExecution(
-      new TransportShipExecution(
-        this.player,
-        this.mg.owner(dst).id(),
-        dst,
-        this.player.troops() / 5,
-        null,
-      ),
-    );
-    return;
-  }
-
   randomLand(): TileRef | null {
     const delta = 25;
     let tries = 0;
@@ -428,12 +319,12 @@ export class FakeHumanExecution implements Execution {
     return true;
   }
 
-  private handleTN() {
+  private handleTN(): boolean {
     if (this.player === null || this.behavior === null)
       throw new Error("not initialized");
 
     const tn = this.mg.terraNullius();
-    if (!tn) return;
+    if (!tn) return false;
 
     /* ---------- 1. land-border check (unchanged) ---------- */
     const bordersTN = Array.from(this.player.borderTiles()).some((tile) =>
@@ -444,7 +335,7 @@ export class FakeHumanExecution implements Execution {
 
     if (bordersTN) {
       this.behavior.sendAttack(tn);
-      return;
+      return true;
     }
 
     /* ---------- 2. boat attack: sample a few shore tiles only ---------- */
@@ -456,7 +347,7 @@ export class FakeHumanExecution implements Execution {
       Array.from(this.player.borderTiles()).filter((t) =>
         this.mg.isOceanShore(t),
       ),
-      10, // check at most 10 shore tiles
+      8, // check at most 8 shore tiles
     );
 
     for (const tile of shoreSample) {
@@ -471,9 +362,10 @@ export class FakeHumanExecution implements Execution {
             null,
           ),
         );
-        return;
+        return true;
       }
     }
+    return false;
   }
   private isTooCloseToExistingBoat(dst: TileRef): boolean {
     for (const prev of this.boatDestinations) {
@@ -482,5 +374,20 @@ export class FakeHumanExecution implements Execution {
       if (dx * dx + dy * dy <= 100 * 100) return true;
     }
     return false;
+  }
+
+  private checkOverwhelm() {
+    if (!this.player || !this.behavior) return;
+
+    const currentEnemy = (this.behavior as any).enemy as Player | null;
+    if (!currentEnemy) return;
+
+    if (
+      currentEnemy.type() === PlayerType.Bot &&
+      this.player.attackingTroops() > currentEnemy.troops() * 2
+    ) {
+      this.behavior.clearEnemy();
+      this.handleEnemies();
+    }
   }
 }

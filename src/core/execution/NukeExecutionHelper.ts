@@ -46,6 +46,8 @@ export class NukeExecutionHelper {
       UnitType.Port,
       UnitType.SAMLauncher,
       UnitType.Airfield,
+      UnitType.Hospital,
+      UnitType.Academy,
     );
     const structureTiles = structures.map((u) => u.tile());
     const randomTiles: (TileRef | null)[] = new Array(10);
@@ -110,9 +112,13 @@ export class NukeExecutionHelper {
           case UnitType.MissileSilo:
             return 50_000;
           case UnitType.Port:
-            return 10_000;
+            return 20_000;
           case UnitType.Airfield:
             return 12_000;
+          case UnitType.Hospital:
+            return 30_000;
+          case UnitType.Academy:
+            return 30_000;
           default:
             return 0;
         }

@@ -153,6 +153,7 @@ export class PlayerImpl implements Player {
       hospitalReturns: this.hospitalReturns(),
       workers: this.workers(),
       troops: this.troops(),
+      attackingTroops: this.attackingTroops(),
       targetTroopRatio: this.targetTroopRatio(),
       productivity: this.productivity(),
       productivityGrowthPerMinute: this.productivityGrowthPerMinute(),
@@ -756,7 +757,7 @@ export class PlayerImpl implements Player {
   totalPopulation(): number {
     return this.population() + this.attackingTroops();
   }
-  private attackingTroops(): number {
+  attackingTroops(): number {
     const landAttackTroops = this._outgoingAttacks
       .filter((a) => a.isActive())
       .reduce((sum, a) => sum + a.troops(), 0);

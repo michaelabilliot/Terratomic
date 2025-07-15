@@ -7,8 +7,9 @@ export class UnitCreationHelper {
   private static readonly CITY_DENSITY_PER_TILE = 1 / 6000;
   private static readonly PORT_DENSITY_PER_TILE = 1 / 12000;
   private static readonly MIN_BUILDING_DISTANCE_SQUARED = 1600; // 40 tiles squared
-  private static readonly DEFENSE_POST_DENSITY_PER_BORDER_TILE = 1 / 100;
+  private static readonly DEFENSE_POST_DENSITY_PER_BORDER_TILE = 1 / 110;
   private static readonly MAX_DISTANCE_FROM_BORDER_SQUARED = 400; // 20 tiles squared
+  private static readonly MIN_DISTANCE_FROM_BORDER_SQUARED = 100; // 10 tiles squared
   private static readonly MIN_DISTANCE_BETWEEN_DEFENSE_POSTS_SQUARED = 900; // 30 tiles squared
   private static readonly MAX_PLACEMENT_ATTEMPTS = 100;
 
@@ -291,7 +292,15 @@ export class UnitCreationHelper {
       );
       if (!nearFront) continue;
 
-      // 2- stay ≥ 30 tiles away from every existing defence post
+      // 2- distance to *any* frontline border must be ≥ 10 (squared ≥ 100)
+      const farEnoughFromBorder = frontlineBorders.every(
+        (b) =>
+          this.mg.euclideanDistSquared(tile, b) >=
+          UnitCreationHelper.MIN_DISTANCE_FROM_BORDER_SQUARED,
+      );
+      if (!farEnoughFromBorder) continue;
+
+      // 3- stay ≥ 30 tiles away from every existing defence post
       const overlaps = existingPosts.some(
         (p) =>
           this.mg.euclideanDistSquared(tile, p.tile()) <=
