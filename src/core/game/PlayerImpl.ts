@@ -859,7 +859,7 @@ export class PlayerImpl implements Player {
     if (amount < 0) {
       throw new Error(`Cannot remove negative productivity: ${amount}`);
     }
-    this._productivity = Math.max(0.33, this._productivity - amount);
+    this._productivity = Math.max(0.33, this._productivity * (1 - amount));
   }
   hospitalReturns(): number {
     return this._hospitalReturns;
