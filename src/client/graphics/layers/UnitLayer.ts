@@ -672,7 +672,7 @@ export class UnitLayer implements Layer {
 
       let angle = Math.atan2(dy, dx);
 
-      if (unit.type() === UnitType.Bomber) {
+      if (unit.type() === UnitType.FighterJet) {
         angle += Math.PI / 2;
       }
       this.unitToLastAngle.set(unit, angle);

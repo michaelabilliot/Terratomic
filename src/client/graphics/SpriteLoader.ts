@@ -22,8 +22,8 @@ const SPRITE_CONFIG: Partial<Record<UnitType, string>> = {
   [UnitType.TradeShip]: tradeShipSprite,
   [UnitType.MIRV]: mirvSprite,
   [UnitType.CargoPlane]: cargoPlaneSprite,
-  [UnitType.Bomber]: bomberSprite,
-  [UnitType.FighterJet]: fighterJetSprite,
+  [UnitType.Bomber]: fighterJetSprite,
+  [UnitType.FighterJet]: bomberSprite,
 };
 
 const spriteMap: Map<UnitType, ImageBitmap> = new Map();
