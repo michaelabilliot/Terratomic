@@ -8,6 +8,7 @@ import { AllianceRequestReplyExecution } from "./alliance/AllianceRequestReplyEx
 import { BreakAllianceExecution } from "./alliance/BreakAllianceExecution";
 import { AttackExecution } from "./AttackExecution";
 import { BoatRetreatExecution } from "./BoatRetreatExecution";
+import { BomberTargetExecution } from "./BomberTargetExecution";
 import { BotSpawner } from "./BotSpawner";
 import { ConstructionExecution } from "./ConstructionExecution";
 import { DonateGoldExecution } from "./DonateGoldExecution";
@@ -69,6 +70,13 @@ export class Executor {
         return new MoveWarshipExecution(player, intent.unitId, intent.tile);
       case "move_fighter_jet":
         return new MoveFighterJetExecution(player, intent.unitId, intent.tile);
+      case "bomber_intent":
+        return new BomberTargetExecution(
+          player,
+          intent.targetID,
+          intent.structure,
+        );
+
       case "spawn":
         return new SpawnExecution(
           player.info(),

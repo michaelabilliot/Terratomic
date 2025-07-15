@@ -109,6 +109,9 @@ export class PlayerImpl implements Player {
   private _hasSpawned = false;
   private _isDisconnected = false;
 
+  private bomberIntent: { targetPlayerID: string; structure: UnitType } | null =
+    null;
+
   constructor(
     private mg: GameImpl,
     private _smallID: number,
@@ -826,7 +829,7 @@ export class PlayerImpl implements Player {
     return this._productivityGrowthPerMinute;
   }
   updateProductivity(): void {
-    const alpha = 0.0006;
+    const alpha = 0.0004;
     const beta = 0.5;
 
     const maxPop = this.mg.config().maxPopulation(this);
@@ -1296,5 +1299,16 @@ export class PlayerImpl implements Player {
       .forEach((p) => airfields.push(p));
 
     return airfields;
+  }
+  public setBomberIntent(
+    intent: { targetPlayerID: string; structure: UnitType } | null,
+  ): void {
+    this.bomberIntent = intent;
+  }
+  public getBomberIntent(): {
+    targetPlayerID: string;
+    structure: UnitType;
+  } | null {
+    return this.bomberIntent;
   }
 }

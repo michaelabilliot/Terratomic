@@ -28,7 +28,6 @@ import {
 import { replacer } from "../core/Util";
 import { LobbyConfig } from "./ClientGameRunner";
 import { LocalServer } from "./LocalServer";
-
 export class PauseGameEvent implements GameEvent {
   constructor(public readonly paused: boolean) {}
 }
@@ -176,6 +175,13 @@ export class MoveFighterJetIntentEvent implements GameEvent {
   ) {}
 }
 
+export class SendBomberIntentEvent implements GameEvent {
+  constructor(
+    public readonly targetID: PlayerID | null, // who to attack
+    public readonly structure: UnitType | null, // what to bomb
+  ) {}
+}
+
 export class Transport {
   private socket: WebSocket | null = null;
 
@@ -237,6 +243,7 @@ export class Transport {
     this.eventBus.on(SendSetInvestmentRateEvent, (e) =>
       this.onSendSetInvestmentRateEvent(e),
     );
+    this.eventBus.on(SendBomberIntentEvent, (e) => this.onSendBomberIntent(e));
 
     this.eventBus.on(BuildUnitIntentEvent, (e) => this.onBuildUnitIntent(e));
 
@@ -630,6 +637,14 @@ export class Transport {
       clientID: this.lobbyConfig.clientID,
       unitId: event.unitId,
       tile: event.tile,
+    });
+  }
+  private onSendBomberIntent(event: SendBomberIntentEvent) {
+    this.sendIntent({
+      type: "bomber_intent",
+      clientID: this.lobbyConfig.clientID,
+      targetID: event.targetID ?? null,
+      structure: event.structure ?? null,
     });
   }
 

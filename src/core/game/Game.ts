@@ -601,6 +601,11 @@ export interface Player {
   playerProfile(): PlayerProfile;
   tradingPorts(port: Unit): Unit[];
   airfields(airfield: Unit): Unit[];
+  setBomberIntent(
+    intent: { targetPlayerID: string; structure: UnitType } | null,
+  ): void;
+  getBomberIntent(): { targetPlayerID: string; structure: UnitType } | null;
+
   // WARNING: this operation is expensive.
   bestTransportShipSpawn(tile: TileRef): TileRef | false;
 }
