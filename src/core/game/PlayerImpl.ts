@@ -829,7 +829,7 @@ export class PlayerImpl implements Player {
     return this._productivityGrowthPerMinute;
   }
   updateProductivity(): void {
-    const alpha = 0.0004;
+    const alpha = 0.0005;
     const beta = 0.5;
 
     const maxPop = this.mg.config().maxPopulation(this);
