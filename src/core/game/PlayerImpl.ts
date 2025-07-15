@@ -826,7 +826,7 @@ export class PlayerImpl implements Player {
     return this._productivityGrowthPerMinute;
   }
   updateProductivity(): void {
-    const alpha = 0.0004;
+    const alpha = 0.0006;
     const beta = 0.5;
 
     const maxPop = this.mg.config().maxPopulation(this);
@@ -860,6 +860,9 @@ export class PlayerImpl implements Player {
       throw new Error(`Cannot remove negative productivity: ${amount}`);
     }
     this._productivity = Math.max(0.33, this._productivity * (1 - amount));
+  }
+  setProductivity(p: number): void {
+    this._productivity = p;
   }
   hospitalReturns(): number {
     return this._hospitalReturns;

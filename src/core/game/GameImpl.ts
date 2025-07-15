@@ -469,6 +469,10 @@ export class GameImpl implements Game {
     }
     this._map.setOwnerID(tile, owner.smallID());
     owner._tiles.add(tile);
+    const numTiles = owner.numTilesOwned();
+    owner.setProductivity(
+      (owner.productivity() * (numTiles - 1)) / numTiles + 1 / numTiles,
+    );
     owner._lastTileChange = this._ticks;
     this.updateBorders(tile);
     this._map.setFallout(tile, false);
