@@ -666,8 +666,10 @@ export class UnitLayer implements Layer {
       const dx = currentPos.x - lastPos.x;
       const dy = currentPos.y - lastPos.y;
 
+      const lastAngle = this.unitToLastAngle.get(unit);
+
       if (dx === 0 && dy === 0) {
-        return this.unitToLastAngle.get(unit) ?? null;
+        return lastAngle ?? null;
       }
 
       let angle = Math.atan2(dy, dx);
@@ -675,6 +677,24 @@ export class UnitLayer implements Layer {
       if (unit.type() === UnitType.FighterJet) {
         angle += Math.PI / 2;
       }
+
+      if (lastAngle !== undefined) {
+        // Determines how quickly the unit realigns its orientation.
+        // A smaller value results in a longer period of realignment.
+        const smoothingFactor = 0.25;
+        let angleDiff = angle - lastAngle;
+
+        // Normalize the angle difference to be between -PI and PI
+        while (angleDiff > Math.PI) {
+          angleDiff -= 2 * Math.PI;
+        }
+        while (angleDiff < -Math.PI) {
+          angleDiff += 2 * Math.PI;
+        }
+
+        angle = lastAngle + angleDiff * smoothingFactor;
+      }
+
       this.unitToLastAngle.set(unit, angle);
       return angle;
     }
