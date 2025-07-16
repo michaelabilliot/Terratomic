@@ -19,9 +19,16 @@ import { EventBus } from "../../../core/EventBus";
 import { Cell, Gold, PlayerActions, UnitType } from "../../../core/game/Game";
 import { TileRef } from "../../../core/game/GameMap";
 import { GameView } from "../../../core/game/GameView";
+import { LangSelector } from "../../LangSelector";
 import { BuildUnitIntentEvent } from "../../Transport";
 import { renderNumber } from "../../Utils";
 import { Layer } from "./Layer";
+
+enum BuildCategory {
+  Nuclear = "nuclear",
+  Military = "military",
+  Infrastructure = "infrastructure",
+}
 
 interface BuildItemDisplay {
   unitType: UnitType;
@@ -29,103 +36,114 @@ interface BuildItemDisplay {
   description?: string;
   key?: string;
   countable?: boolean;
+  category: BuildCategory;
 }
 
-const buildTable: BuildItemDisplay[][] = [
-  [
-    {
-      unitType: UnitType.AtomBomb,
-      icon: atomBombIcon,
-      description: "build_menu.desc.atom_bomb",
-      key: "unit_type.atom_bomb",
-      countable: false,
-    },
-    {
-      unitType: UnitType.MIRV,
-      icon: mirvIcon,
-      description: "build_menu.desc.mirv",
-      key: "unit_type.mirv",
-      countable: false,
-    },
-    {
-      unitType: UnitType.HydrogenBomb,
-      icon: hydrogenBombIcon,
-      description: "build_menu.desc.hydrogen_bomb",
-      key: "unit_type.hydrogen_bomb",
-      countable: false,
-    },
-    {
-      unitType: UnitType.Airfield,
-      icon: airfieldIcon,
-      description: "build_menu.desc.airfield",
-      key: "unit_type.airfield",
-      countable: true,
-    },
-    {
-      unitType: UnitType.FighterJet,
-      icon: fighterJetIcon,
-      description: "build_menu.desc.fighter_jet",
-      key: "unit_type.fighter_jet",
-      countable: true,
-    },
-    {
-      unitType: UnitType.Warship,
-      icon: warshipIcon,
-      description: "build_menu.desc.warship",
-      key: "unit_type.warship",
-      countable: true,
-    },
-    {
-      unitType: UnitType.Port,
-      icon: portIcon,
-      description: "build_menu.desc.port",
-      key: "unit_type.port",
-      countable: true,
-    },
-    {
-      unitType: UnitType.MissileSilo,
-      icon: missileSiloIcon,
-      description: "build_menu.desc.missile_silo",
-      key: "unit_type.missile_silo",
-      countable: true,
-    },
-    // needs new icon
-    {
-      unitType: UnitType.SAMLauncher,
-      icon: samlauncherIcon,
-      description: "build_menu.desc.sam_launcher",
-      key: "unit_type.sam_launcher",
-      countable: true,
-    },
-    {
-      unitType: UnitType.DefensePost,
-      icon: shieldIcon,
-      description: "build_menu.desc.defense_post",
-      key: "unit_type.defense_post",
-      countable: true,
-    },
-    {
-      unitType: UnitType.Hospital,
-      icon: hospitalIcon,
-      description: "build_menu.desc.hospital",
-      key: "unit_type.hospital",
-      countable: true,
-    },
-    {
-      unitType: UnitType.Academy,
-      icon: academyIcon,
-      description: "build_menu.desc.academy",
-      key: "unit_type.academy",
-      countable: true,
-    },
-    {
-      unitType: UnitType.City,
-      icon: cityIcon,
-      description: "build_menu.desc.city",
-      key: "unit_type.city",
-      countable: true,
-    },
-  ],
+const buildTable: BuildItemDisplay[] = [
+  {
+    unitType: UnitType.AtomBomb,
+    icon: atomBombIcon,
+    description: "build_menu.desc.atom_bomb",
+    key: "unit_type.atom_bomb",
+    countable: false,
+    category: BuildCategory.Nuclear,
+  },
+  {
+    unitType: UnitType.MIRV,
+    icon: mirvIcon,
+    description: "build_menu.desc.mirv",
+    key: "unit_type.mirv",
+    countable: false,
+    category: BuildCategory.Nuclear,
+  },
+  {
+    unitType: UnitType.HydrogenBomb,
+    icon: hydrogenBombIcon,
+    description: "build_menu.desc.hydrogen_bomb",
+    key: "unit_type.hydrogen_bomb",
+    countable: false,
+    category: BuildCategory.Nuclear,
+  },
+  {
+    unitType: UnitType.Airfield,
+    icon: airfieldIcon,
+    description: "build_menu.desc.airfield",
+    key: "unit_type.airfield",
+    countable: true,
+    category: BuildCategory.Military,
+  },
+  {
+    unitType: UnitType.FighterJet,
+    icon: fighterJetIcon,
+    description: "build_menu.desc.fighter_jet",
+    key: "unit_type.fighter_jet",
+    countable: true,
+    category: BuildCategory.Military,
+  },
+  {
+    unitType: UnitType.Warship,
+    icon: warshipIcon,
+    description: "build_menu.desc.warship",
+    key: "unit_type.warship",
+    countable: true,
+    category: BuildCategory.Military,
+  },
+  {
+    unitType: UnitType.Port,
+    icon: portIcon,
+    description: "build_menu.desc.port",
+    key: "unit_type.port",
+    countable: true,
+    category: BuildCategory.Infrastructure,
+  },
+  {
+    unitType: UnitType.MissileSilo,
+    icon: missileSiloIcon,
+    description: "build_menu.desc.missile_silo",
+    key: "unit_type.missile_silo",
+    countable: true,
+    category: BuildCategory.Military,
+  },
+  {
+    unitType: UnitType.SAMLauncher,
+    icon: samlauncherIcon,
+    description: "build_menu.desc.sam_launcher",
+    key: "unit_type.sam_launcher",
+    countable: true,
+    category: BuildCategory.Military,
+  },
+  {
+    unitType: UnitType.DefensePost,
+    icon: shieldIcon,
+    description: "build_menu.desc.defense_post",
+    key: "unit_type.defense_post",
+    countable: true,
+    category: BuildCategory.Infrastructure,
+  },
+  {
+    unitType: UnitType.Hospital,
+    icon: hospitalIcon,
+    description: "build_menu.desc.hospital",
+    key: "unit_type.hospital",
+    countable: true,
+    category: BuildCategory.Infrastructure,
+  },
+  {
+    unitType: UnitType.Academy,
+    icon: academyIcon,
+    description: "build_menu.desc.academy",
+    key: "unit_type.academy",
+    countable: true,
+    category: BuildCategory.Infrastructure,
+  },
+  {
+    unitType: UnitType.City,
+    icon: cityIcon,
+    description: "build_menu.desc.city",
+    key: "unit_type.city",
+    countable: true,
+    category: BuildCategory.Infrastructure,
+  },
 ];
 
 @customElement("build-menu")
@@ -134,7 +152,9 @@ export class BuildMenu extends LitElement implements Layer {
   public eventBus: EventBus;
   private clickedTile: TileRef;
   private playerActions: PlayerActions | null;
-  private filteredBuildTable: BuildItemDisplay[][] = buildTable;
+  private filteredBuildTable: BuildItemDisplay[] = [];
+  @state()
+  private _selectedCategory: BuildCategory = BuildCategory.Nuclear;
 
   tick() {
     if (!this._hidden) {
@@ -320,13 +340,48 @@ export class BuildMenu extends LitElement implements Layer {
       .build-count-chip {
         padding: 0 3px;
       }
-      .build-button img {
-        width: 24px;
-        height: 24px;
+    }
+    .category-tabs {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 15px;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .category-button {
+      background-color: #3a3a3a;
+      color: white;
+      border: 1px solid #555;
+      padding: 8px 15px;
+      margin: 0 5px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition:
+        background-color 0.3s ease,
+        border-color 0.3s ease;
+      font-weight: bold;
+      text-transform: capitalize;
+    }
+    .category-button:hover {
+      background-color: #4a4a4a;
+      border-color: #777;
+    }
+    .category-button.active {
+      background-color: #007bff;
+      border-color: #007bff;
+    }
+    @media (max-width: 768px) {
+      .category-button {
+        padding: 6px 10px;
+        margin: 0 3px;
+        font-size: 0.9em;
       }
-      .build-cost img {
-        width: 10px;
-        height: 10px;
+    }
+    @media (max-width: 480px) {
+      .category-button {
+        padding: 5px 8px;
+        margin: 0 2px;
+        font-size: 0.8em;
       }
     }
   `;
@@ -374,61 +429,89 @@ export class BuildMenu extends LitElement implements Layer {
     this.hideMenu();
   };
 
+  private selectCategory(category: BuildCategory) {
+    this._selectedCategory = category;
+    this.refresh();
+  }
+
   render() {
+    const categories = Object.values(BuildCategory);
+    const langSelector = document.querySelector(
+      "lang-selector",
+    ) as LangSelector;
+
+    // Only render categories if translations are loaded
+    if (
+      !langSelector ||
+      !langSelector.translations ||
+      Object.keys(langSelector.translations).length === 0
+    ) {
+      return html``; // Render nothing until translations are ready
+    }
+
     return html`
       <div
         class="build-menu ${this._hidden ? "hidden" : ""}"
         @contextmenu=${(e) => e.preventDefault()}
       >
-        ${this.filteredBuildTable.map(
-          (row) => html`
-            <div class="build-row">
-              ${row.map(
-                (item) => html`
-                  <button
-                    class="build-button"
-                    @click=${() => this.onBuildSelected(item)}
-                    ?disabled=${!this.canBuild(item)}
-                    title=${!this.canBuild(item)
-                      ? translateText("build_menu.not_enough_money")
-                      : ""}
-                  >
-                    <img
-                      src=${item.icon}
-                      alt="${item.unitType}"
-                      width="40"
-                      height="40"
-                    />
-                    <span class="build-name"
-                      >${item.key && translateText(item.key)}</span
-                    >
-                    <span class="build-description"
-                      >${item.description &&
-                      translateText(item.description)}</span
-                    >
-                    <span class="build-cost" translate="no">
-                      ${renderNumber(
-                        this.game && this.game.myPlayer() ? this.cost(item) : 0,
-                      )}
-                      <img
-                        src=${goldCoinIcon}
-                        alt="gold"
-                        width="12"
-                        height="12"
-                        style="vertical-align: middle;"
-                      />
-                    </span>
-                    ${item.countable
-                      ? html`<div class="build-count-chip">
-                          <span class="build-count">${this.count(item)}</span>
-                        </div>`
-                      : ""}
-                  </button>
-                `,
-              )}
-            </div>
-          `,
-        )}
+        <div class="category-tabs">
+          ${categories.map(
+            (category) => html`
+              <button
+                class="category-button ${this._selectedCategory === category
+                  ? "active"
+                  : ""}"
+                @click=${() => this.selectCategory(category)}
+              >
+                ${translateText(`build_menu.category.${category}`)}
+              </button>
+            `,
+          )}
+        </div>
+        <div class="build-row">
+          ${this.filteredBuildTable.map(
+            (item) => html`
+              <button
+                class="build-button"
+                @click=${() => this.onBuildSelected(item)}
+                ?disabled=${!this.canBuild(item)}
+                title=${!this.canBuild(item)
+                  ? translateText("build_menu.not_enough_money")
+                  : ""}
+              >
+                <img
+                  src=${item.icon}
+                  alt="${item.unitType}"
+                  width="40"
+                  height="40"
+                />
+                <span class="build-name"
+                  >${item.key && translateText(item.key)}</span
+                >
+                <span class="build-description"
+                  >${item.description && translateText(item.description)}</span
+                >
+                <span class="build-cost" translate="no">
+                  ${renderNumber(
+                    this.game && this.game.myPlayer() ? this.cost(item) : 0,
+                  )}
+                  <img
+                    src=${goldCoinIcon}
+                    alt="gold"
+                    width="12"
+                    height="12"
+                    style="vertical-align: middle;"
+                  />
+                </span>
+                ${item.countable
+                  ? html`<div class="build-count-chip">
+                      <span class="build-count">${this.count(item)}</span>
+                    </div>`
+                  : ""}
+              </button>
+            `,
+          )}
+        </div>
       </div>
     `;
   }
@@ -441,6 +524,7 @@ export class BuildMenu extends LitElement implements Layer {
   showMenu(clickedTile: TileRef) {
     this.clickedTile = clickedTile;
     this._hidden = false;
+    this._selectedCategory = BuildCategory.Nuclear; // Reset to default category
     this.refresh();
   }
 
@@ -457,9 +541,11 @@ export class BuildMenu extends LitElement implements Layer {
     this.filteredBuildTable = this.getBuildableUnits();
   }
 
-  private getBuildableUnits(): BuildItemDisplay[][] {
-    return buildTable.map((row) =>
-      row.filter((item) => !this.game?.config()?.isUnitDisabled(item.unitType)),
+  private getBuildableUnits(): BuildItemDisplay[] {
+    return buildTable.filter(
+      (item) =>
+        item.category === this._selectedCategory &&
+        !this.game?.config()?.isUnitDisabled(item.unitType),
     );
   }
 

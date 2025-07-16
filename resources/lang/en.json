@@ -81,6 +81,11 @@
     "ally_donate_gold": "Donate some of your gold to your ally. Used when they're low on gold and need it for buildings, or when your team member is saving for that MIRV.",
     "build_menu_title": "Build menu",
     "build_menu_desc": "Build these or see how many of each you already build:",
+    "category": {
+      "nuclear": "Nuclear",
+      "military": "Military",
+      "infrastructure": "Infrastructure"
+    },
     "build_name": "Name",
     "build_icon": "Icon",
     "build_desc": "Description",
@@ -378,7 +383,12 @@
       "airfield": "Sends bomber planes to bomb other players",
       "fighter_jet": "Destroys bombers and fighters jets"
     },
-    "not_enough_money": "Not enough money"
+    "not_enough_money": "Not enough money",
+    "category": {
+      "nuclear": "Nuclear",
+      "military": "Military",
+      "infrastructure": "Infrastructure"
+    }
   },
   "win_modal": {
     "died": "You died",
