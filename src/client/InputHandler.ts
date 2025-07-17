@@ -1,6 +1,8 @@
 import { EventBus, GameEvent } from "../core/EventBus";
-import { UnitView } from "../core/game/GameView";
+import { GameView, UnitView } from "../core/game/GameView";
 import { UserSettings } from "../core/game/UserSettings";
+import { TransformHandler } from "./graphics/TransformHandler";
+import { BuildCategory } from "./graphics/layers/BuildMenu";
 import { ReplaySpeedMultiplier } from "./utilities/ReplaySpeedMultiplier";
 
 export class MouseUpEvent implements GameEvent {
@@ -68,6 +70,7 @@ export class ShowBuildMenuEvent implements GameEvent {
   constructor(
     public readonly x: number,
     public readonly y: number,
+    public readonly category?: BuildCategory,
   ) {}
 }
 export class ShowEmojiMenuEvent implements GameEvent {
@@ -120,6 +123,8 @@ export class InputHandler {
   constructor(
     private canvas: HTMLCanvasElement,
     private eventBus: EventBus,
+    private gameView: GameView,
+    private transformHandler: TransformHandler,
   ) {}
 
   initialize() {
@@ -321,7 +326,33 @@ export class InputHandler {
     this.pointers.clear();
 
     if (this.isModifierKeyPressed(event)) {
-      this.eventBus.emit(new ShowBuildMenuEvent(event.clientX, event.clientY));
+      const clickedCell = this.transformHandler.screenToWorldCoordinates(
+        event.clientX,
+        event.clientY,
+      );
+      if (clickedCell === null) {
+        return;
+      }
+      if (!this.gameView.isValidCoord(clickedCell.x, clickedCell.y)) {
+        return;
+      }
+      const tile = this.gameView.ref(clickedCell.x, clickedCell.y);
+      const owner = this.gameView.owner(tile);
+      const myPlayer = this.gameView.myPlayer();
+
+      let category: BuildCategory;
+
+      if (!this.gameView.isLand(tile)) {
+        category = BuildCategory.Military;
+      } else if (owner === myPlayer) {
+        category = BuildCategory.Infrastructure;
+      } else {
+        category = BuildCategory.Nuclear;
+      }
+
+      this.eventBus.emit(
+        new ShowBuildMenuEvent(event.clientX, event.clientY, category),
+      );
       return;
     }
     if (this.isAltKeyPressed(event)) {

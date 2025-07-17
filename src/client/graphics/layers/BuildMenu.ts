@@ -24,7 +24,7 @@ import { BuildUnitIntentEvent } from "../../Transport";
 import { renderNumber } from "../../Utils";
 import { Layer } from "./Layer";
 
-enum BuildCategory {
+export enum BuildCategory {
   Nuclear = "nuclear",
   Military = "military",
   Infrastructure = "infrastructure",
@@ -65,14 +65,6 @@ const buildTable: BuildItemDisplay[] = [
     category: BuildCategory.Nuclear,
   },
   {
-    unitType: UnitType.Airfield,
-    icon: airfieldIcon,
-    description: "build_menu.desc.airfield",
-    key: "unit_type.airfield",
-    countable: true,
-    category: BuildCategory.Military,
-  },
-  {
     unitType: UnitType.FighterJet,
     icon: fighterJetIcon,
     description: "build_menu.desc.fighter_jet",
@@ -89,6 +81,14 @@ const buildTable: BuildItemDisplay[] = [
     category: BuildCategory.Military,
   },
   {
+    unitType: UnitType.Airfield,
+    icon: airfieldIcon,
+    description: "build_menu.desc.airfield",
+    key: "unit_type.airfield",
+    countable: true,
+    category: BuildCategory.Infrastructure,
+  },
+  {
     unitType: UnitType.Port,
     icon: portIcon,
     description: "build_menu.desc.port",
@@ -102,7 +102,7 @@ const buildTable: BuildItemDisplay[] = [
     description: "build_menu.desc.missile_silo",
     key: "unit_type.missile_silo",
     countable: true,
-    category: BuildCategory.Military,
+    category: BuildCategory.Infrastructure,
   },
   {
     unitType: UnitType.SAMLauncher,
@@ -110,7 +110,7 @@ const buildTable: BuildItemDisplay[] = [
     description: "build_menu.desc.sam_launcher",
     key: "unit_type.sam_launcher",
     countable: true,
-    category: BuildCategory.Military,
+    category: BuildCategory.Infrastructure,
   },
   {
     unitType: UnitType.DefensePost,
@@ -154,7 +154,7 @@ export class BuildMenu extends LitElement implements Layer {
   private playerActions: PlayerActions | null;
   private filteredBuildTable: BuildItemDisplay[] = [];
   @state()
-  private _selectedCategory: BuildCategory = BuildCategory.Nuclear;
+  private _selectedCategory: BuildCategory = BuildCategory.Infrastructure;
 
   tick() {
     if (!this._hidden) {
@@ -352,15 +352,16 @@ export class BuildMenu extends LitElement implements Layer {
       background-color: #3a3a3a;
       color: white;
       border: 1px solid #555;
-      padding: 8px 15px;
-      margin: 0 5px;
-      border-radius: 8px;
+      padding: 4px 8px;
+      margin: 0 2px;
+      border-radius: 6px;
       cursor: pointer;
       transition:
         background-color 0.3s ease,
         border-color 0.3s ease;
       font-weight: bold;
       text-transform: capitalize;
+      font-size: 0.7em;
     }
     .category-button:hover {
       background-color: #4a4a4a;
@@ -372,16 +373,16 @@ export class BuildMenu extends LitElement implements Layer {
     }
     @media (max-width: 768px) {
       .category-button {
-        padding: 6px 10px;
-        margin: 0 3px;
-        font-size: 0.9em;
+        padding: 3px 6px;
+        margin: 0 1px;
+        font-size: 0.6em;
       }
     }
     @media (max-width: 480px) {
       .category-button {
-        padding: 5px 8px;
-        margin: 0 2px;
-        font-size: 0.8em;
+        padding: 2px 4px;
+        margin: 0 1px;
+        font-size: 0.5em;
       }
     }
   `;
@@ -521,10 +522,10 @@ export class BuildMenu extends LitElement implements Layer {
     this.requestUpdate();
   }
 
-  showMenu(clickedTile: TileRef) {
+  showMenu(clickedTile: TileRef, initialCategory?: BuildCategory) {
     this.clickedTile = clickedTile;
     this._hidden = false;
-    this._selectedCategory = BuildCategory.Nuclear; // Reset to default category
+    this._selectedCategory = initialCategory || BuildCategory.Infrastructure;
     this.refresh();
   }
 

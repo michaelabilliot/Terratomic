@@ -168,7 +168,7 @@ export async function createClientGame(
     lobbyConfig,
     eventBus,
     gameRenderer,
-    new InputHandler(canvas, eventBus),
+    new InputHandler(canvas, eventBus, gameView, gameRenderer.transformHandler),
     transport,
     worker,
     gameView,

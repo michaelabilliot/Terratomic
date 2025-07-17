@@ -122,7 +122,7 @@ export class RadialMenu implements Layer {
       if (p === null) {
         return;
       }
-      this.buildMenu.showMenu(tile);
+      this.buildMenu.showMenu(tile, e.category);
     });
 
     this.eventBus.on(CloseViewEvent, () => this.closeMenu());

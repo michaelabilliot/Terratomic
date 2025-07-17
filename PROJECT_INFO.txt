@@ -1,407 +1,178 @@
-# Table of Contents
+# Project Info: Terratomic (Version 2.0 - Code-Verified)
 
-- [Project Info: Terratomic](#project-info-terratomic)
-- [1. Project Overview](#1-project-overview)
-    - [1.1. Core Technologies](#11-core-technologies)
-- [2. Project Structure](#2-project-structure)
-  - [2.1. `src` Directory Deep Dive](#21-src-directory-deep-dive)
-    - [2.1.1. `src/client` - The Frontend](#211-srcclient---the-frontend)
-    - [2.1.2. `src/core` - The Shared Game Logic](#212-srccore---the-shared-game-logic)
-    - [2.1.3. `src/server` - The Backend](#213-srcserver---the-backend)
-    - [2.1.4. `src/scripts` - Utility Scripts](#214-srcscripts---utility-scripts)
-- [3. How the Game Works - A Deeper Technical Dive](#3-how-the-game-works---a-deeper-technical-dive)
-  - [3.1. The Game Loop](#31-the-game-loop)
-  - [3.2. The Execution System: The Heart of the Game's Logic](#32-the-execution-system-the-heart-of-the-games-logic)
-  - [3.3. Client-Server Communication](#33-client-server-communication)
-  - [3.4. Master/Worker Architecture: Scaling the Game](#34-masterworker-architecture-scaling-the-game)
-  - [3.5. Quirks and Key Points](#35-quirks-and-key-points)
-- [7. Advanced Topics & Codebase Quirks](#7-advanced-topics--codebase-quirks)
-  - [7.1. Configuration Loading and Prioritization](#71-configuration-loading-and-prioritization)
-  - [7.2. `Game` vs. `GameView`: Understanding Client-Side State](#72-game-vs-gameview-understanding-client-side-state)
-  - [7.3. MessagePack Usage](#73-messagepack-usage)
-  - [7.4. `PseudoRandom` for Determinism](#74-pseudorandom-for-determinism)
-  - [7.5. LitElement for UI Components](#75-litelement-for-ui-components)
-    - [7.6. Tailwind CSS and PostCSS](#76-tailwind-css-and-postcss)
-
-# Project Info: Terratomic
-
-This document provides a deep technical overview of the Terratomic project, intended to onboard developers and serve as a comprehensive reference for the game's architecture and mechanics.
+This document provides a deep technical overview of the Terratomic project, verified and enhanced against the provided source code. It is intended to onboard developers and serve as a comprehensive reference for the game's architecture and mechanics.
 
 ## 1. Project Overview
 
-Terratomic is a real-time strategy (RTS) game focused on territorial conquest, resource management, and diplomacy. It is a fork of OpenFront.io, with a renewed focus on community-driven development.
-
-The project is a full-stack TypeScript application, with a client-server architecture. The frontend is built with vanilla TypeScript and Webpack, while the backend is powered by Node.js.
+Terratomic is a real-time strategy (RTS) game focused on territorial conquest, resource management, and diplomacy. The game is a full-stack TypeScript application with a client-server architecture.
 
 ### 1.1. Core Technologies
 
 - **Programming Language:** TypeScript
 - **Frontend:**
-    - **Bundler:** Webpack
-    - **Styling:** Tailwind CSS, PostCSS
-    - **Rendering:** HTML5 Canvas
+    - **UI Components:** LitElement
+    - **Styling:** Tailwind CSS (via `@tailwind` directives in CSS) and PostCSS.
+    - **Rendering:** HTML5 Canvas, with D3.js used for specific UI elements like the radial menu.
 - **Backend:** Node.js, Express.js
-- **Database:** PostgreSQL (for player data, if applicable, not for game state)
-- **Game State Archiving:** S3-Compatible Object Storage (e.g., Cloudflare R2)
-- **Real-time Communication:** WebSockets
-- **Serialization:** MessagePack (used for efficient binary serialization over WebSockets)
-- **Containerization:** Docker
-- **CI/CD:** GitHub Actions
+- **Real-time Communication:** WebSockets (`ws` library)
+- **Serialization:** **JSON**. A custom replacer function is used with `JSON.stringify` to handle `BigInt` values. (Note: MessagePack is not used, contrary to previous documentation).
+- **Game State Archiving:** S3-Compatible Object Storage (Cloudflare R2 is referenced in the code).
+- **Architecture:** Master/Worker architecture for scalability, with a Web Worker on the client-side for simulating single-player/replay games.
 
 ## 2. Project Structure
 
-The project is organized into several key directories, each with a specific purpose.
+The project is organized into several key directories. The following structure is derived from the provided code files:
 
 ```
-.
-├── .github/                        # GitHub Actions workflows and issue templates
-├── .husky/                         # Git hooks for pre-commit checks
-├── .vscode/                        # VSCode launch configurations
-├── resources/                      # Static assets (images, fonts, maps, etc.)
-├── src/                            # Source code
-│   ├── client/                     # Frontend application
-│   │   ├── components/             # Reusable UI components
-│   │   │   └── baseComponents/     # Basic building blocks for UI
-│   │   │       ├── setting/        # Components for settings UI
-│   │   │       ├── Button.ts
-│   │   │       └── Modal.ts
-│   │   ├── data/                   # Static data for the client
-│   │   ├── graphics/               # Handles all rendering to the HTML5 Canvas
-│   │   │   ├── fx/                 # Visual effects
-│   │   │   ├── icons/              # UI icons
-│   │   │   └── layers/             # Rendering layers for the game world
-│   │   ├── styles/                 # CSS files
-│   │   │   ├── components/         # Styles for UI components
-│   │   │   ├── core/               # Core styles
-│   │   │   ├── layout/             # Layout styles
-│   │   │   └── modal/              # Modal styles
-│   │   └── utilities/              # Helper functions for the client
-│   ├── core/                       # Shared game logic (client and server)
-│   │   ├── configuration/          # Game configuration files
-│   │   ├── execution/              # Game actions (executions)
-│   │   │   ├── alliance/           # Alliance-related executions
-│   │   │   └── utils/              # Utility functions for executions
-│   │   ├── game/                   # Core game model
-│   │   ├── pathfinding/            # Pathfinding algorithms
-│   │   ├── utilities/              # Shared utility functions
-│   │   ├── validations/            # Input validation logic
-│   │   └── worker/                 # Web worker implementation
-│   ├── scripts/                    # Build and utility scripts
-│   └── server/                     # Backend application
-│       ├── gatekeeper/             # Player authentication and session management
-├── static/                         # Compiled frontend assets (generated by Webpack)
-├── tests/                          # Unit and integration tests
-├── .dockerignore                   # Files to ignore when building the Docker image
-├── .editorconfig                   # Editor configuration for consistent coding styles
-├── .gitignore                      # Files to ignore in Git
-├── .gitmodules                     # Git submodules configuration
-├── .prettierrc                     # Prettier configuration for code formatting
-├── CODEOWNERS                      # Defines ownership for parts of the codebase
-├── deploy.sh                       # Deployment script
-├── Dockerfile                      # Docker image definition
-├── eslint.config.js                # ESLint configuration for code linting
-├── example.env                     # Example environment variables
-├── jest.config.ts                  # Jest test runner configuration
-├── LICENSE                         # Project license (GPLv3)
-├── nginx.conf                      # Nginx configuration for the server
-├── package.json                    # Node.js dependencies and scripts
-├── postcss.config.js               # PostCSS configuration
-├── README.md                       # Project overview and setup instructions
-├── setup.sh                        # Setup script
-├── startup.sh                      # Startup script for the Docker container
-├── supervisord.conf                # Supervisor configuration for process management
-├── tailwind.config.js              # Tailwind CSS configuration
-├── tsconfig.json                   # TypeScript compiler configuration
-└── webpack.config.js               # Webpack bundler configuration
+src/
+├── client/                     # Frontend application
+│   ├── components/             # Reusable UI components (LitElement)
+│   │   ├── baseComponents/
+│   │   │   └── setting/
+│   │   ├── Difficulties.ts
+│   │   ├── Maps.ts
+│   │   └── NewsButton.ts
+│   ├── data/
+│   │   └── countries.json      # Data for flag selection
+│   ├── graphics/               # Handles all rendering to the HTML5 Canvas
+│   │   ├── fx/                 # Visual effects (Nuke, explosions)
+│   │   ├── icons/              # SVG-based LitElement icons
+│   │   └── layers/             # Core rendering layers (Terrain, Units, UI)
+│   ├── styles/                 # CSS files (including Tailwind directives)
+│   └── utilities/              # Client-side helper functions
+├── core/                       # Shared game logic (client and server)
+│   ├── configuration/          # Game configuration files and themes
+│   ├── execution/              # Game actions (Executions)
+│   │   ├── alliance/
+│   │   └── utils/
+│   ├── game/                   # Core game model (Game, Player, Unit, etc.)
+│   ├── pathfinding/            # A* pathfinding and related utilities
+│   ├── utilities/              # Shared utility functions
+│   ├── validations/            # Input validation logic (e.g., username)
+│   └── worker/                 # Web Worker implementation for client-side game logic
+├── scripts/                    # Utility scripts
+│   └── terrain/                # Scripts for generating terrain maps
+└── server/                     # Backend Node.js application
+    ├── gatekeeper/             # Security middleware (stubbed in this code)
+    └── (Master.ts, Worker.ts, etc.)
 ```
 
 ### 2.1. `src` Directory Deep Dive
 
 #### 2.1.1. `src/client` - The Frontend
 
-This directory contains all the code that runs in the user's browser.
-
-- **`Main.ts`**: The main entry point for the client application. It initializes the game loop, graphics, input handling, and network communication.
-- **`index.html`**: The main HTML file that loads the game.
-- **`components/`**: Reusable UI components, such as modals, buttons, and input fields.
-- **`graphics/`**: Handles all rendering to the HTML5 Canvas.
-    - **`GameRenderer.ts`**: The main rendering class that orchestrates the drawing of the game world.
-    - **`layers/`**: Different rendering layers for the game (e.g., terrain, units, effects).
-    - **`sprites/`**: Code for loading and managing animated sprites.
-- **`hud/`**: The Heads-Up Display, which shows player information, resources, and other game data.
-- **`input/`**: Manages user input from the mouse and keyboard.
-- **`network/`**: Handles WebSocket communication with the server.
-- **`styles/`**: CSS files, including Tailwind CSS configuration.
-- **`utilities/`**: Helper functions and utilities for the client.
+- **`Main.ts`**: The main entry point for the client. Initializes UI components, event listeners, and handles the initial lobby joining logic.
+- **`ClientGameRunner.ts`**: The core class that manages a running game instance on the client. It orchestrates the `GameRenderer`, `InputHandler`, `Transport`, and the client-side `WorkerClient`.
+- **`Transport.ts`**: Handles all network communication (both WebSocket and LocalServer emulation) and translates UI events into game `Intents`.
+- **`InputHandler.ts`**: Captures raw mouse, keyboard, and touch events and translates them into semantic `GameEvent`s (e.g., `MouseUpEvent`, `ZoomEvent`) on the `EventBus`.
+- **`graphics/`**:
+    - **`GameRenderer.ts`**: The main rendering class that orchestrates the drawing of all visual layers onto the canvas.
+    - **`layers/`**: Each file defines a distinct visual layer, such as `TerrainLayer`, `UnitLayer`, `TerritoryLayer`, and UI elements like `ControlPanel`, `Leaderboard`, and `RadialMenu`.
+- **`components/`**: UI is built with LitElement. These are reusable custom HTML elements like `<host-lobby-modal>`, `<username-input>`, etc.
 
 #### 2.1.2. `src/core` - The Shared Game Logic
 
-This is the most critical part of the application, as it contains the game's rules and state management. This code is shared between the client and the server to ensure consistency.
+This is the most critical part of the application, containing the deterministic game rules and state management.
 
 - **`game/`**: The core game model.
-    - **`Game.ts`**: The main game class that manages the game state, players, units, and the game map.
-    - **`Player.ts`**: Represents a player in the game.
-    - **`Unit.ts`**: The base class for all units in the game (e.g., troops, tanks, ships).
-    - **`GameMap.ts`**: Represents the game world, including terrain and tile data.
-- **`execution/`**: Defines all possible actions that can be taken in the game.
-    - **`Execution.ts`**: The base class for all game actions.
-    - Each file in this directory represents a specific action (e.g., `AttackExecution.ts`, `ConstructionExecution.ts`).
-- **`pathfinding/`**: Algorithms for unit movement, such as A*.
-- **`configuration/`**: Game configuration files, such as default settings, development settings, and production settings.
-- **`validations/`**: Input validation logic.
+    - **`Game.ts`**: Defines the interfaces for the game world.
+    - **`GameImpl.ts`**: The concrete implementation of the `Game` interface. This is the "real" game engine that runs on the server and in the client's web worker.
+    - **`GameView.ts`**: A read-only proxy of the game state used by the client's main thread for rendering. It prevents direct mutation of the game state from the UI.
+- **`execution/`**: Defines all possible actions as "Executions".
+    - Each file represents a specific action (e.g., `AttackExecution.ts`, `ConstructionExecution.ts`).
+    - `ExecutionManager.ts` is responsible for creating these `Execution` objects from `Intents`.
+- **`worker/`**:
+    - **`Worker.worker.ts`**: The code that runs inside a Web Worker. It creates a `GameRunner` instance to run the simulation off the main thread.
+    - **`WorkerClient.ts`**: The interface on the main thread for communicating with the Web Worker.
 
 #### 2.1.3. `src/server` - The Backend
 
-This directory contains the Node.js application that runs on the server.
-
-- **`Server.ts`**: The main entry point for the server application. It sets up the Express server and WebSocket connections.
-- **`Master.ts` & `Worker.ts`**: Implements a master/worker architecture to handle multiple game instances concurrently. The master process manages the game lobbies, while the worker processes run the actual game simulations.
-- **`GameManager.ts`**: Manages the lifecycle of game instances.
-- **`Client.ts`**: Represents a connected client (player) on the server.
-- **`gatekeeper/`**: Handles player authentication and session management.
-
-#### 2.1.4. `src/scripts` - Utility Scripts
-
-This directory contains utility scripts for development and build processes.
-
-- **`generateTerrainMaps.ts`**: A script to generate the terrain maps for the game.
+- **`Server.ts`**: The main entry point for the server, which decides whether to start a `Master` or `Worker` process based on the environment.
+- **`Master.ts`**: The master process. It manages worker processes, handles lobby creation and discovery (e.g., the `/api/public_lobbies` endpoint), and routes connections to the appropriate worker.
+- **`Worker.ts`**: A worker process. It runs an Express server on a specific port and a `GameManager` to handle one or more game instances. It listens for WebSocket connections for the games it hosts.
+- **`GameManager.ts`**: Manages the lifecycle of all `GameServer` instances within a single worker process.
+- **`GameServer.ts`**: A server-side representation of a single game match. It manages connected `Client`s, processes turns, and handles the game loop via `setInterval`.
 
 ## 3. How the Game Works - A Deeper Technical Dive
 
 ### 3.1. The Game Loop
 
-The game operates on a tick-based game loop. This is a fundamental concept in many games, and it's how Terratomic manages its state and time.
+The game's loop is managed differently on the client and server.
 
-- **Client-Side:** The `GameLoop.ts` on the client is responsible for rendering the game at a consistent frame rate and sending user input to the server. It uses `requestAnimationFrame` to ensure smooth rendering.
-
-- **Server-Side:** The server runs the main game loop, which is managed by the `GameRunner.ts` in the `src/core` directory. Each tick, the server processes all the executions (player actions) in the queue, updates the game state, and sends the changes back to the clients.
+- **Server-Side (`GameServer.ts`):** The game loop is driven by `setInterval`, which calls `endTurn()` at a regular interval (defined in `ServerConfig`). In each `endTurn`, it bundles all received `Intents` into a `Turn` object and broadcasts it to all connected clients.
+- **Client-Side (`ClientGameRunner.ts`):** The client's main loop is driven by `requestAnimationFrame`. This loop is primarily for rendering (`renderer.tick()`) and keeping the Web Worker alive (`worker.sendHeartbeat()`). The actual game logic simulation is run inside the Web Worker.
+- **Client-Side Web Worker (`Worker.worker.ts`):** The worker receives `heartbeat` messages from the main thread. Each heartbeat triggers `gameRunner.executeNextTick()`, which processes one tick of the game simulation. This keeps the simulation running smoothly without blocking the main rendering thread.
 
 ### 3.2. The Execution System: The Heart of the Game's Logic
 
-Player actions are modeled as "executions." When a player performs an action (e.g., attacks a tile, builds a unit), an `Execution` object is created and sent to the server. The server validates the execution and, if it's valid, adds it to a queue. The `ExecutionManager.ts` processes this queue, applying the executions to the game state in a deterministic order.
+Player actions are modeled as "Executions" for deterministic state updates.
 
-This architecture ensures that the game state remains consistent across all clients and that all actions are processed in a fair and predictable manner.
-
-**Example: An Attack Execution**
-
-Let's look at how an attack is handled:
-
-1.  **Client-Side:** The player clicks on an enemy tile to attack. The client creates an `Intent` object and sends it to the server.
-
-    ```typescript
-    // src/client/Input.ts (simplified)
-    function handleMapClick(x: number, y: number) {
-      const targetTile = game.ref(x, y);
-      if (player.canAttack(targetTile)) {
-        const attackIntent = { type: 'attack', targetID: game.owner(targetTile).id(), troops: 100 };
-        network.send(attackIntent);
-      }
-    }
-    ```
-
-2.  **Server-Side:** The server receives the `Intent` and the `Executor` turns it into a full `AttackExecution` object, which is then added to the execution queue.
-
-    ```typescript
-    // src/server/Worker.ts & src/core/execution/ExecutionManager.ts (simplified)
-    // In Worker.ts
-    ws.on('message', (message) => {
-      const intent = deserialize(message);
-      gameRunner.addTurn({ intents: [intent] });
-    });
-
-    // In ExecutionManager.ts
-    function createExec(intent: Intent): Execution {
-      if (intent.type === 'attack') {
-        return new AttackExecution(intent.troops, player, intent.targetID);
-      }
-      // ...
-    }
-    ```
-
-3.  **Game Tick:** On the next game tick, the `ExecutionManager` processes the `AttackExecution`.
-
-    ```typescript
-    // src/core/GameRunner.ts (simplified)
-    function executeNextTick() {
-      // ...
-      const updates = this.game.executeNextTick();
-      // ...
-    }
-    ```
-
-4.  **State Update:** The `AttackExecution` modifies the game state (e.g., creates an `Attack` object, reduces the attacker's troops).
-
-5.  **Client Update:** The server sends the updated game state to all clients.
+1.  **Client Input (`InputHandler.ts`):** A raw user action (e.g., a right-click) is captured and published as a `GameEvent` (e.g., `ContextMenuEvent`) on the `EventBus`.
+2.  **UI/Menu Logic (`RadialMenu.ts`):** A UI component, like the radial menu, listens for the `ContextMenuEvent`. When a menu option is clicked, it creates a high-level *intent event* (e.g., `SendAttackIntentEvent`).
+3.  **Network Transport (`Transport.ts`):** The `Transport` class listens for these intent events. It converts them into plain data `Intent` objects (defined in `Schemas.ts`) and sends them to the server via WebSocket.
+4.  **Server (`GameServer.ts`):** The server receives the `Intent`, adds it to a buffer for the current turn (`this.intents`).
+5.  **Turn Processing (`GameServer.ts`):** At the end of a turn interval, the server bundles all intents into a `Turn` object and sends it back to all clients.
+6.  **Client & Server Simulation (`Worker.worker.ts` & Server's `GameRunner`):** Both the server and each client's Web Worker receive the `Turn` object. They pass the intents to an `Executor` (`ExecutionManager.ts`), which creates concrete `Execution` classes (e.g., `new AttackExecution(...)`).
+7.  **State Mutation (`GameImpl.ts`):** The `tick()` method of each `Execution` is called, which mutates the `Game` state. Because the process is identical on the server and all clients, the state remains synchronized.
+8.  **Client-Side Update (`WorkerClient.ts` -> `ClientGameRunner.ts`):** The client's worker posts a `game_update` message back to the main thread. The `ClientGameRunner` receives this and updates its `GameView`, which in turn triggers the `GameRenderer` to redraw the screen.
 
 ### 3.3. Client-Server Communication
 
-- **WebSockets:** The primary means of communication between the client and the server is through WebSockets. This allows for low-latency, real-time communication, which is essential for an RTS game.
-
-- **MessagePack:** The game uses MessagePack for serializing data sent over the WebSocket connection. This is a binary serialization format that is more efficient than JSON, which is important for a game that sends a lot of data.
-
-- **API Endpoints:** The server also exposes a set of RESTful API endpoints for actions that don't require real-time communication, such as player authentication, fetching game lobbies, and viewing game replays.
+- **WebSockets:** Used for all real-time game communication.
+- **JSON:** All messages are serialized using `JSON.stringify`. A custom `replacer` function in `Util.ts` handles the serialization of `BigInt` values to strings.
+- **API Endpoints:** The server also exposes RESTful API endpoints for lobby management, fetching game records, and retrieving server environment settings.
 
 ### 3.4. Master/Worker Architecture: Scaling the Game
 
-The server uses a master/worker architecture to handle multiple game instances concurrently. This is a key feature that allows the game to scale to a large number of players.
+The server uses a master/worker architecture for scalability.
 
-- **Master Process (`src/server/Master.ts`):**
-    - Manages all the game lobbies.
-    - Handles player authentication and matchmaking.
-    - Spawns and manages worker processes.
-    - Distributes players to worker processes.
+- **Master Process (`Master.ts`):** A single master process acts as the entry point. It doesn't run game logic. Its roles are:
+    1.  Forking a pool of worker processes.
+    2.  Scheduling public games by creating them on workers.
+    3.  Providing an API endpoint (`/api/public_lobbies`) that aggregates lobby information from all workers.
+    4.  Routing requests to the correct worker based on a hash of the `gameID` and a URL prefix (e.g., `/w0/`, `/w1/`).
+- **Worker Processes (`Worker.ts`):**
+    - Each worker is a complete Node.js/Express server running on a unique port.
+    - It hosts multiple `GameServer` instances.
+    - It handles all direct WebSocket and HTTP communication for the games it hosts.
+    - This model isolates games and allows the application to utilize multiple CPU cores.
 
-- **Worker Processes (`src/server/Worker.ts`):**
-    - Each worker process runs a single game instance.
-    - This isolates each game from the others, so a crash in one game won't affect the others.
-    - The worker process is responsible for running the game loop, processing executions, and sending game state updates to the clients in its game.
+## 4. Advanced Topics & Codebase Quirks
 
-**How it Works:**
+### 4.1. The `Game` vs. `GameView` & The Web Worker
 
-1.  When a player creates a new game, the master process creates a new worker process for that game.
-2.  The master process then sends the player to the worker process.
-3.  The worker process creates a new `Game` instance and starts the game loop.
-4.  All subsequent communication for that game happens directly between the clients and the worker process.
+The separation of game logic is a key architectural pattern:
 
-This architecture allows the game to scale horizontally by simply adding more servers.
+- **`Game` & `GameImpl`**: The full, mutable, authoritative game state.
+    - On the **server**, it's the single source of truth.
+    - On the **client**, it runs *inside the Web Worker* (`Worker.worker.ts`) to perform simulation without blocking the UI.
+- **`GameView`**: A read-only proxy/view model of the game state.
+    - It exists **only on the client's main thread**.
+    - It gets its data from `game_update` messages sent by the client's Web Worker.
+    - All rendering code (`graphics/layers/`) and UI components (`components/`) interact with the `GameView`, not the `Game`. This prevents the UI from accidentally mutating the state.
 
-### 3.5. Quirks and Key Points
+### 4.2. Configuration System
 
-- **Shared Core Logic:** The `src/core` directory is a critical part of the project. By sharing this code between the client and the server, the game ensures that the client's prediction of the game state is consistent with the server's authoritative state. This helps to reduce the effects of network latency and provides a smoother player experience.
+- **`src/core/configuration`**: This directory contains the configuration logic.
+- **`ServerConfig`**: Defines server-level settings (ports, environment, auth tokens). Implementations exist for `Dev`, `Preprod`, and `Prod`.
+- **`Config`**: Defines game-level settings (rules, speeds, costs). `DefaultConfig` is the main implementation.
+- **`GameConfig` (in `Schemas.ts`):** A plain data object that defines the settings for a *specific match* (e.g., map, difficulty, player count). This is passed around to initialize the `Config` object.
+- The client fetches the server's environment via `/api/env` to ensure it loads the matching configuration files.
 
-- **Determinism:** The game's execution system is designed to be deterministic. This means that given the same initial game state and the same sequence of executions, the game will always produce the same result. This is crucial for features like replays and for ensuring fairness in the game.
-- **Configuration-driven:** The game is highly configurable. The `src/core/configuration` directory contains different configuration files for different environments (development, production, etc.). This allows for easy customization of the game's settings without having to change the code.
+### 4.3. LitElement and Styling
 
-- **Testing:** The project has a comprehensive test suite that covers all aspects of the game logic. This is essential for maintaining the quality of the code and for preventing regressions.
+- **Light DOM:** Most LitElement components in this project use `createRenderRoot() { return this; }`. This disables the Shadow DOM, making it easy for global styles from `styles.css` (including Tailwind's utility classes) to apply to the components.
+- **Tailwind CSS:** Styling is primarily done via utility classes in the Lit `html` templates.
 
-This document should provide a solid foundation for understanding the Terratomic project. For more detailed information, please refer to the source code and the other documentation in the project.
+### 4.4. `PseudoRandom` for Determinism
 
-## 4. Development Workflow and Philosophy
+The `PseudoRandom` class (`src/core/PseudoRandom.ts`) is used throughout the `core` game logic instead of `Math.random()`. It's a simple Linear Congruential Generator (LCG) that, given the same initial seed, will always produce the same sequence of "random" numbers. This is absolutely essential for keeping the game simulation deterministic across all clients and the server.
 
-### 4.1. Getting Started
+### 4.5. The `EventBus`
 
-To start the development environment, run the following command:
-
-```bash
-npm run dev
-```
-
-This will start the webpack dev server for the frontend and the Node.js server for the backend.
-
-### 4.2. Testing
-
-While there is a test suite in the `tests/` directory, the primary focus for testing is **in-game testing**. This is because many of the game's mechanics are emergent and difficult to test with unit tests alone.
-
-- **Performance is a key focus.** All new features and changes should be tested for their impact on performance.
-- **Unit tests are not always necessary**, but they are encouraged for critical or complex parts of the codebase.
-
-## 5. Core Architectural Patterns & How to Add Features
-
-### 5.1. The `Game` Object: The Single Source of Truth
-
-The `Game` class (defined in `src/core/game/Game.ts` and implemented in `src/core/game/GameImpl.ts`) is the most important object in the application. It is the central hub that holds the entire state of a single match:
-
--   All players, units, and tiles
--   The game map
--   Active attacks and alliances
--   The current game tick
-
-Any change to the game world happens by mutating the `Game` object or its children. When you implement a new feature, you will almost certainly be reading from or writing to this object.
-
-### 5.2. State Management: Direct Mutation
-
-Unlike many modern web applications that use immutable state, this project manages state through **direct mutation** for performance reasons. When an `Execution` runs, it directly calls methods on the `Game` object or its child objects (like `Player` or `Unit`) that change their internal properties.
-
-A developer needs to be aware that they are working with a mutable state tree. The order of operations matters immensely, which is why the deterministic `Execution` system is so important.
-
-### 5.3. The Data Flow of a Player Action
-
-Understanding the full lifecycle of a player's action is crucial:
-
-1.  **Client (`Input.ts`):** The user clicks the mouse. The `Input` handler determines the intent (e.g., "build a Port at tile 50,50").
-2.  **Client (`Intent` Creation):** The client creates an `Intent` object, which is a plain data object representing the action (e.g., `{ type: 'build_unit', unit: UnitType.Port, x: 50, y: 50 }`).
-3.  **Client (`Network.ts`):** The `Intent` is serialized (using MessagePack) and sent over the WebSocket to the server.
-4.  **Server (`Worker.ts`):** The worker's WebSocket server receives the message.
-5.  **Server (`GameManager.ts`):** The message is routed to the correct `GameRunner` instance for that specific game.
-6.  **Core (`ExecutionManager.ts`):** The `GameRunner` passes the `Intent` to the `Executor`. The `Executor` converts the plain `Intent` object into a full-blown `Execution` class (e.g., `new ConstructionExecution(...)`).
-7.  **Core (`Game.ts`):** The `Execution` is added to the game's execution queue. On the next tick, its `tick()` method is called, which finally mutates the `Game` state (e.g., creates a new `Unit` of type `Construction`).
-8.  **Core (`GameUpdates.ts`):** The `Game` object records all changes made during the tick into a `GameUpdates` object.
-9.  **Server (`GameRunner.ts`):** The `GameRunner` takes the `GameUpdates`, serializes them, and sends them back to all connected clients.
-10. **Client (`Network.ts` & `GameLoop.ts`):** The client receives the updates, applies them to its local `Game` object to stay in sync, and the `Graphics` module re-renders the screen to show the new state.
-
-## 6. The Visual Game Display
-
-The game's visuals are rendered on an HTML5 Canvas, managed by the `GameRenderer` class (`src/client/graphics/GameRenderer.ts`). The renderer uses a layered approach to draw the game world, which allows for efficient rendering and separation of concerns.
-
-### 6.1. The Layer System
-
-The `GameRenderer` maintains a list of `Layer` objects. Each layer is responsible for drawing a specific part of the game, such as the terrain, units, or UI elements. The layers are drawn in a specific order to ensure that elements are displayed correctly (e.g., units are drawn on top of the terrain).
-
-The main layers are:
-
--   **`TerrainLayer`**: Draws the base map terrain.
--   **`TerritoryLayer`**: Draws the colored overlays that indicate player territory.
--   **`StructureLayer`**: Draws static structures like cities and ports.
--   **`UnitLayer`**: Draws all moving units (troops, ships, etc.).
--   **`FxLayer`**: Draws visual effects like explosions and smoke.
--   **`UILayer`**: Draws UI elements that are part of the game world (e.g., player names over their territory).
-
-### 6.2. UI Components
-
-The game's UI is a mix of canvas-based elements and HTML-based components (using LitElement). This hybrid approach allows for high-performance rendering of the game world while using the power of the DOM for complex UI elements.
-
--   **`ControlPanel` (`src/client/graphics/layers/ControlPanel.ts`):** This is the main UI panel that displays the player's resources, population, and troop ratios. It also contains the sliders for controlling the attack ratio and investment rate. This is a LitElement component that is rendered on top of the canvas.
-
--   **`RadialMenu` (`src/client/graphics/layers/RadialMenu.ts`):** This is a context-sensitive menu that appears when the player right-clicks on the map. It provides quick access to common actions like attacking, building, and forming alliances. The radial menu is drawn on the canvas using the D3.js library for the arcs and shapes.
-
--   **`BuildMenu` (`src/client/graphics/layers/BuildMenu.ts`):** This menu appears when the player selects the "build" option from the radial menu. It displays a list of all the units and structures that the player can build on the selected tile. This is a LitElement component.
-
--   **`PlayerInfoOverlay` (`src/client/graphics/layers/PlayerInfoOverlay.ts`):** This overlay appears when the player hovers over a player's territory or units. It displays detailed information about the player, including their name, resources, and military strength. This is a LitElement component.
-
-### 6.3. The `Hud.ts` Anomaly
-
-It's important to note that `src/client/hud/Hud.ts` is largely a placeholder. The actual Heads-Up Display (HUD) is not managed by this class. Instead, individual HUD components (like `ControlPanel`, `Leaderboard`, `EventsDisplay`, etc.) are implemented as LitElement custom elements within `src/client/graphics/layers/` and are directly initialized and managed by the `GameRenderer` (`src/client/graphics/GameRenderer.ts`). This means that if you're looking to modify or add HUD elements, you'll primarily be working within the `graphics/layers` directory and the `GameRenderer`'s initialization logic.
-
-## 7. Advanced Topics & Codebase Quirks
-
-This section highlights specific patterns, design choices, or less obvious aspects of the codebase that a new developer might encounter.
-
-### 7.1. Configuration Loading and Prioritization
-
-The game's configuration is loaded dynamically based on the environment. Understanding this flow is crucial for debugging and modifying game settings:
-
--   **Server-Side Configuration (`src/server/Server.ts` -> `src/core/configuration/ConfigLoader.ts`):**
-    -   The server determines its environment (`dev`, `staging`, `prod`) from the `GAME_ENV` environment variable.
-    -   `ConfigLoader.ts` then loads the corresponding `ServerConfig` (e.g., `DevServerConfig`, `preprodConfig`, `prodConfig`), which defines server-specific settings like port numbers, admin tokens, and R2 bucket details.
-
--   **Client-Side Configuration (`src/client/Main.ts` -> `src/core/configuration/ConfigLoader.ts`):**
-    -   The client fetches its environment information from the server via the `/api/env` endpoint.
-    -   Based on the server's reported `game_env`, the client loads the appropriate `Config` (e.g., `DevConfig`, `DefaultConfig`). This `Config` object contains game-specific settings that influence client-side behavior, such as unit costs, game map types, and spawn phase durations.
-
-This layered approach ensures that both the client and server operate with consistent settings for a given environment.
-
-### 7.2. `Game` vs. `GameView`: Understanding Client-Side State
-
-It's critical to distinguish between the `Game` object and the `GameView` object:
-
--   **`Game` (`src/core/game/Game.ts` and `src/core/game/GameImpl.ts`):** This is the **authoritative, mutable game state** object. It resides on the server (and is also used for single-player or replay simulations on the client). All core game logic, state mutations, and rule enforcement happen within this object.
-
--   **`GameView` (`src/core/game/GameView.ts`):** This is a **client-side, read-only representation** of the game state. It receives updates from the server and applies them to its internal data structures. Its primary purpose is to provide a safe, optimized view of the game state for client-side rendering and UI interactions. You will interact with `GameView` methods when developing client-side features, but remember that any changes you make to this object are local and will be overwritten by the next server update. The `PlayerView` and `UnitView` classes are part of this client-side view, providing simplified interfaces for player and unit data.
-
-### 7.3. MessagePack Usage
-
-While `msgpack5` is listed as a dependency, its direct usage for serialization/deserialization of game updates and intents is not immediately apparent in the core `Network` or `Worker` classes. It's likely integrated at a lower level within the WebSocket communication or used by a sub-dependency. If you need to inspect the raw data being sent over the wire, you might need to investigate the WebSocket implementation more deeply or use browser developer tools to examine network traffic.
-
-### 7.4. `PseudoRandom` for Determinism
-
-As emphasized in Section 5.3, the game's determinism is critical. This means avoiding `Math.random()`. Instead, the `PseudoRandom` class (`src/core/PseudoRandom.ts`) should be used for any random number generation within the core game logic. This ensures that game simulations can be perfectly replayed and that all clients (and the server) will arrive at the same game state given the same inputs.
-
-### 7.5. LitElement for UI Components
-
-Many of the UI components are built using LitElement, a lightweight library for creating web components. If you're unfamiliar with LitElement, it's recommended to review its basic concepts (e.g., reactive properties, templates, shadow DOM) to effectively work with the existing UI and build new components.
-
-### 7.6. Tailwind CSS and PostCSS
-
-The project uses Tailwind CSS for utility-first styling, processed by PostCSS. This means that CSS is primarily written by applying utility classes directly in the HTML (or LitElement templates) rather than writing custom CSS rules. PostCSS is used for transformations like autoprefixing and JIT compilation of Tailwind classes. Understanding this workflow is key to modifying the game's visual appearance.
-
-This concludes the comprehensive technical documentation for the Terratomic project. It should provide an AI developer with all the necessary context and specific details to effectively understand, debug, and contribute to the codebase. Please let me know if you have any further questions or require additional information.
+The client-side code makes heavy use of a simple `EventBus` (`src/core/EventBus.ts`). This is used to decouple components. For example:
+- `InputHandler` fires a `ContextMenuEvent`.
+- `RadialMenu` listens for `ContextMenuEvent` to show itself.
+- `RadialMenu` fires a `SendAttackIntentEvent`.
+- `Transport` listens for `SendAttackIntentEvent` to send the data to the server.
+This pattern prevents direct dependencies between components like `InputHandler` and `Transport`.
